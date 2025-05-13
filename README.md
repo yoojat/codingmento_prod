@@ -1,3 +1,3 @@
 # CODING MENTO
 
-Welcome to Codingmento Webserivces.
+Welcome to Codingmento Webservices.
