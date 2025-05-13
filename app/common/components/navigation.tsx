@@ -45,7 +45,7 @@ export default function Navigation({
   hasMessages: boolean;
 }) {
   return (
-    <nav className="flex px-20 h-16 items-center justify-between backdrop-blur fixed top-0 left-0 right-0 z-50 bg-background/50">
+    <nav className="flex px-20 h-16 items-center justify-between fixed top-0 left-0 right-0 z-50 bg-[#3B82F6]">
       <div className="flex items-center">
         <Link to="/" className="font-bold tracking-tighter">
           codingmentor
@@ -134,7 +134,7 @@ export default function Navigation({
           <Button asChild variant="secondary">
             <Link to="/auth/login">Login</Link>
           </Button>
-          <Button asChild>
+          <Button asChild className="bg-[#2563EB]">
             <Link to="/auth/join">Join</Link>
           </Button>
         </div>
