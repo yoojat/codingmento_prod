@@ -42,6 +42,8 @@ const menus = [
   { name: "강의듣기", to: "/lecture" },
   { name: "강의목록", to: "/lectures" },
   { name: "커뮤니티", to: "/community" },
+  { name: "무료체험", to: "/free_trial" },
+  { name: "데모", to: "/demo" },
 ];
 
 export default function Navigation({
