@@ -14,6 +14,7 @@ export const meta: MetaFunction = () => {
 export default function HomePage() {
   return (
     <div>
+      image.png
       <div className="py-40 bg-[url('/images/coding2.jpg')] bg-cover bg-no-repeat mx-auto w-full max-w-7xl 2xl:rounded-2xl relative">
         <div className="absolute inset-0 bg-black/50 xl:bg-black/0 2xl:rounded-2xl"></div>
         <div className="flex flex-col justify-end items-center md:items-end relative">
@@ -32,6 +33,7 @@ export default function HomePage() {
               온라인 코딩 수업!<br></br>
             </p>
           </div>
+          <Button>hello</Button>
         </div>
       </div>
     </div>

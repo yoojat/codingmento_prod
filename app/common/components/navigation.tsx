@@ -37,13 +37,43 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
+import { cn } from "~/lib/utils";
 
 const menus = [
-  { name: "강의듣기", to: "/lecture" },
-  { name: "강의목록", to: "/lectures" },
-  { name: "커뮤니티", to: "/community" },
-  { name: "무료체험", to: "/free_trial" },
-  { name: "데모", to: "/demo" },
+  {
+    name: "소개",
+    to: "/",
+    items: [
+      {
+        name: "코딩멘토는?",
+        description: "친절하게 코딩을 알려주는 코딩수업 플랫폼입니다",
+        to: "#about",
+      },
+      {
+        name: "강사소개",
+        description: "코딩멘토의 대표강사를 소개합니다.",
+        to: "#mentor",
+      },
+      {
+        name: "커리큘럼",
+        description: "커리큘럼 안내 - 기초부터 실전까지",
+        to: "#curriculum",
+      },
+      {
+        name: "시간표",
+        description: "수업 시간표를 확인해보세요",
+        to: "#timetable",
+      },
+      {
+        name: "FAQ",
+        description: "자주하는 질문들",
+        to: "#faq",
+      },
+    ],
+  },
+
+  { name: "수업듣기", to: "/lecture" },
+  { name: "수업기록", to: "/record" },
 ];
 
 export default function Navigation({
@@ -110,13 +140,47 @@ export default function Navigation({
           <NavigationMenuList>
             {menus.map((menu) => (
               <NavigationMenuItem key={menu.name}>
-                <Link
-                  prefetch="intent"
-                  className={navigationMenuTriggerStyle()}
-                  to={menu.to}
-                >
-                  {menu.name}
-                </Link>
+                {menu.items ? (
+                  <>
+                    <Link to={menu.to}>
+                      <NavigationMenuTrigger>{menu.name}</NavigationMenuTrigger>
+                    </Link>
+                    <NavigationMenuContent>
+                      <ul className="grid w-[600px] font-light gap-3 p-4 grid-cols-2">
+                        {menu.items?.map((item) => (
+                          <NavigationMenuItem
+                            key={item.name}
+                            className={cn([
+                              "select-none rounded-md transition-colors focus:bg-accent  hover:bg-accent",
+                              item.to === "#about" &&
+                                "col-span-2 bg-primary/10 hover:bg-primary/20 focus:bg-primary/20",
+                              item.to === "/jobs/submit" &&
+                                "col-span-2 bg-primary/10 hover:bg-primary/20 focus:bg-primary/20",
+                            ])}
+                          >
+                            <NavigationMenuLink asChild>
+                              <Link
+                                className="p-3 space-y-1 block leading-none no-underline outline-none"
+                                to={item.to}
+                              >
+                                <span className="text-sm font-medium leading-none">
+                                  {item.name}
+                                </span>
+                                <p className="text-sm leading-snug text-muted-foreground">
+                                  {item.description}
+                                </p>
+                              </Link>
+                            </NavigationMenuLink>
+                          </NavigationMenuItem>
+                        ))}
+                      </ul>
+                    </NavigationMenuContent>
+                  </>
+                ) : (
+                  <Link className={navigationMenuTriggerStyle()} to={menu.to}>
+                    {menu.name}
+                  </Link>
+                )}
               </NavigationMenuItem>
             ))}
           </NavigationMenuList>

@@ -43,16 +43,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <>
+    <Layout>
       <div className="py-16 bg-[#F9FAFB]">
         <Navigation
-          isLoggedIn={false}
+          isLoggedIn={true}
           hasNotifications={false}
           hasMessages={false}
         />
         <Outlet />
       </div>
-    </>
+    </Layout>
   );
 }
 
