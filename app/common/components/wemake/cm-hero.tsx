@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { Button } from "../ui/button";
 
 export function Hero({
@@ -22,10 +23,21 @@ export function Hero({
             눈높이에 딱 맞춘 맞춤형 원격 코딩 수업
           </p>
           <div className="flex flex-col sm:flex-row justify-center md:justify-start gap-4">
-            <Button size="lg">무료 체험 신청하기</Button>
-            <Button variant="outline" size="lg">
-              커리큘럼 보기
+            <Button size="lg" asChild>
+              <Link
+                target="_blank"
+                rel="noopener noreferrer"
+                to="https://docs.google.com/forms/d/e/1FAIpQLSfbOVggLG1S46zQ8unabgCu0pPPqeC8lMUh76fOEWY8MUss7A/viewform?usp=sharing&ouid=112713208317921974620"
+              >
+                무료 체험 신청하기
+              </Link>
             </Button>
+
+            <Link to="/#curriculum">
+              <Button variant="outline" size="lg">
+                커리큘럼 보기
+              </Button>
+            </Link>
           </div>
         </div>
 

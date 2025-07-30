@@ -47,36 +47,32 @@ const menus = [
       {
         name: "코딩멘토는?",
         description: "친절하게 코딩을 알려주는 코딩수업 플랫폼입니다",
-        to: "/#about",
+        to: "#about",
       },
       {
         name: "강사소개",
         description: "코딩멘토의 대표강사를 소개합니다.",
-        to: "/#mentor",
+        to: "#mentor",
       },
       {
         name: "커리큘럼",
         description: "커리큘럼 안내 - 기초부터 실전까지",
-        to: "/#curriculum",
+        to: "#curriculum",
       },
       {
         name: "시간표",
         description: "수업 시간표를 확인해보세요",
-        to: "/#timetable",
+        to: "#timetable",
       },
       {
         name: "FAQ",
         description: "자주하는 질문들",
-        to: "/#faq",
+        to: "#faq",
       },
     ],
   },
 
-  {
-    name: "수업듣기",
-    to: "https://discord.gg/fAnKyYS8",
-    target: "_blank",
-  },
+  { name: "수업듣기", to: "/lecture" },
   { name: "수업기록", to: "/studylogs" },
 ];
 
@@ -117,36 +113,14 @@ export default function Navigation({
             <div className="p-6">
               <div className="flex flex-col space-y-6">
                 {menus.map((menu) => (
-                  <div key={menu.name}>
-                    {menu.items ? (
-                      <div className="space-y-3">
-                        <div className="text-lg font-medium text-white">
-                          {menu.name}
-                        </div>
-                        <div className="ml-4 space-y-2">
-                          {menu.items.map((item) => (
-                            <Link
-                              key={item.name}
-                              to={item.to}
-                              className="block text-sm text-gray-200 hover:text-white transition-colors"
-                              onClick={() => setSheetOpen(false)}
-                            >
-                              {item.name}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <Link
-                        to={menu.to}
-                        target={menu.target}
-                        className="text-lg font-medium hover:text-blue-900"
-                        onClick={() => setSheetOpen(false)}
-                      >
-                        {menu.name}
-                      </Link>
-                    )}
-                  </div>
+                  <Link
+                    key={menu.name}
+                    to={menu.to}
+                    className="text-lg font-medium hover:text-blue-900"
+                    onClick={() => setSheetOpen(false)}
+                  >
+                    {menu.name}
+                  </Link>
                 ))}
               </div>
             </div>
@@ -168,7 +142,7 @@ export default function Navigation({
               <NavigationMenuItem key={menu.name}>
                 {menu.items ? (
                   <>
-                    <Link to={menu.to} target={menu.target}>
+                    <Link to={menu.to}>
                       <NavigationMenuTrigger>{menu.name}</NavigationMenuTrigger>
                     </Link>
                     <NavigationMenuContent>
@@ -202,11 +176,7 @@ export default function Navigation({
                     </NavigationMenuContent>
                   </>
                 ) : (
-                  <Link
-                    className={navigationMenuTriggerStyle()}
-                    to={menu.to}
-                    target={menu.target}
-                  >
+                  <Link className={navigationMenuTriggerStyle()} to={menu.to}>
                     {menu.name}
                   </Link>
                 )}
@@ -219,7 +189,7 @@ export default function Navigation({
       {isLoggedIn ? (
         <div className="flex items-center gap-2 sm:gap-4">
           <Button size="icon" variant="ghost" asChild className="relative">
-            <Link to="/my/notifications">
+            <Link to="/wemake/my/notifications">
               <BellIcon className="size-4" />
               {hasNotifications && (
                 <div className="absolute top-1.5 right-1.5 size-2 bg-red-500 rounded-full" />
@@ -227,7 +197,7 @@ export default function Navigation({
             </Link>
           </Button>
           <Button size="icon" variant="ghost" asChild className="relative">
-            <Link to="/my/messages">
+            <Link to="/wemake/my/messages">
               <MessageCircleIcon className="size-4" />
               {hasMessages && (
                 <div className="absolute top-1.5 right-1.5 size-2 bg-red-500 rounded-full" />
@@ -237,35 +207,41 @@ export default function Navigation({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-                <AvatarImage src="/images/boy.png" />
+                <AvatarImage src="https://github.com/serranoarevalo.png" />
                 <AvatarFallback>N</AvatarFallback>
               </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
               <DropdownMenuLabel className="flex flex-col">
-                <span className="font-medium">김태영</span>
-                <span className="text-xs text-muted-foreground">@0tae</span>
+                <span className="font-medium">John Doe</span>
+                <span className="text-xs text-muted-foreground">@username</span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link to="/my/profile">
-                    <UserIcon className="size-4 mr-2" />
-                    프로필
+                  <Link to="/wemake/my/dashboard">
+                    <BarChart3Icon className="size-4 mr-2" />
+                    Dashboard
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link to="/my/settings">
+                  <Link to="/wemake/my/profile">
+                    <UserIcon className="size-4 mr-2" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link to="/wemake/my/settings">
                     <SettingsIcon className="size-4 mr-2" />
-                    설정
+                    Settings
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to="/auth/logout">
+                <Link to="/wemake/auth/logout">
                   <LogOutIcon className="size-4 mr-2" />
-                  로그아웃
+                  Logout
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -278,13 +254,13 @@ export default function Navigation({
             variant="secondary"
             className="text-xs sm:text-sm px-2 sm:px-4"
           >
-            <Link to="/auth/login">Login</Link>
+            <Link to="/wemake/auth/login">Login</Link>
           </Button>
           <Button
             asChild
             className="bg-[#2563EB] text-xs sm:text-sm px-2 sm:px-4"
           >
-            <Link to="/auth/join">Join</Link>
+            <Link to="/wemake/auth/join">Join</Link>
           </Button>
         </div>
       )}

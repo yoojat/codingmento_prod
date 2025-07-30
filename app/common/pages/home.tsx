@@ -116,7 +116,9 @@ export default function HomePage() {
         alt="코딩 멘토 소개"
       />
       {/* Title */}
-      <h1 className="text-4xl font-bold mt-8 mb-4">코딩 멘토 소개</h1>
+      <h1 id="about" className="text-4xl font-bold mt-8 mb-4 scroll-mt-32">
+        코딩 멘토 소개
+      </h1>
       {/* Description Block */}
       <blockquote className="bg-gray-100 p-4 rounded mb-6">
         코딩멘토는 초등 고학년부터 고등학생, 성인까지 모두를 위한{" "}
@@ -135,7 +137,7 @@ export default function HomePage() {
         있습니다.
       </p>
       {/* 강사 소개 */}
-      <section className="mb-12">
+      <section id="mentor" className="mb-12 scroll-mt-24">
         <h2 className="text-2xl font-bold mb-2">강사 소개</h2>
         <div className="flex flex-col md:flex-row gap-8 items-start">
           <img
@@ -191,7 +193,7 @@ export default function HomePage() {
         </div>
       </section>
       {/* 커리큘럼 안내 */}
-      <section className="mb-12">
+      <section id="curriculum" className="mb-12 scroll-mt-24">
         <h2 className="text-2xl font-bold mb-2">커리큘럼 안내</h2>
         <div className="space-y-4">
           <div className="bg-yellow-50 p-4 rounded">
@@ -239,7 +241,7 @@ export default function HomePage() {
         </div>
       </section>
       {/* 2) Kanban 스타일 시간표 섹션 */}
-      <section className="mb-12">
+      <section id="timetable" className="mb-12 scroll-mt-32">
         <h2 className="text-2xl font-bold mb-4">시간표</h2>
         <div className="overflow-x-auto">
           <div className="inline-flex space-x-4 min-w-max">
@@ -297,7 +299,7 @@ export default function HomePage() {
         </div>
       </section>
       {/* FAQ */}
-      <section className="mb-12">
+      <section id="faq" className="mb-12 scroll-mt-24">
         <h2 className="text-2xl font-bold mb-2">FAQ</h2>
         <div className="space-y-4">
           <details className="bg-gray-50 p-4 rounded" open>
