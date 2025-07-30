@@ -1,5 +1,11 @@
-import type { MetaFunction } from "react-router";
+import { Link, type MetaFunction } from "react-router";
 import { Button } from "~/common/components/ui/button";
+import { PostCard } from "~/features/wemake/community/components/post-card";
+import { ProductCard } from "~/features/wemake/products/components/product-card";
+import { IdeaCard } from "~/features/wemake/ideas/components/idea-card";
+import { JobCard } from "~/features/wemake/jobs/components/job-card";
+import { TeamCard } from "~/features/wemake/teams/components/team-card";
+import type { Route } from "./+types/home-page";
 
 export const meta: MetaFunction = () => {
   return [
@@ -13,28 +19,134 @@ export const meta: MetaFunction = () => {
 
 export default function HomePage() {
   return (
-    <div>
-      image.png
-      <div className="py-40 bg-[url('/images/coding2.jpg')] bg-cover bg-no-repeat mx-auto w-full max-w-7xl 2xl:rounded-2xl relative">
-        <div className="absolute inset-0 bg-black/50 xl:bg-black/0 2xl:rounded-2xl"></div>
-        <div className="flex flex-col justify-end items-center md:items-end relative">
-          <div className="md:px-20 2xl:px-40">
-            <h2 className="text-5xl font-bold leading-tight tracking-tight text-white">
-              <span className="text-blue-400 xl:text-[#011b52]">
-                실시간 코딩 교육!
-              </span>
-              <br></br>코딩멘토
-            </h2>
-            <p className="text-xl font-bold text-white py-5">
-              누구나 어디서나,<br></br>진짜 실력을 키우는 코딩 수업!
-            </p>
-            <p className="text-xl text-white">
-              코딩멘토는 초등학생부터 고등학생까지!<br></br>눈높이에 맞춘 실시간
-              온라인 코딩 수업!<br></br>
-            </p>
-          </div>
-          <Button>hello</Button>
+    <div className="px-20 space-y-40">
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <h2 className="text-5xl font-bold leading-tight tracking-tight">
+            Today's Products
+          </h2>
+          <p className="text-xl font-light text-foreground">
+            The best products made by our community today.
+          </p>
+          <Button variant="link" asChild className="text-lg p-0">
+            <Link to="/wemake/products/leaderboards">
+              Explore all products &rarr;
+            </Link>
+          </Button>
         </div>
+        {Array.from({ length: 11 }).map((_, index) => (
+          <ProductCard
+            key={`productId-${index}`}
+            id={`productId-${index}`}
+            name="Product Name"
+            description="Product Description"
+            commentsCount={12}
+            viewsCount={12}
+            votesCount={120}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <h2 className="text-5xl font-bold leading-tight tracking-tight">
+            Latest Discussions
+          </h2>
+          <p className="text-xl font-light text-foreground">
+            The latest discussions from our community.
+          </p>
+          <Button variant="link" asChild className="text-lg p-0">
+            <Link to="/community">Explore all discussions &rarr;</Link>
+          </Button>
+        </div>
+        {Array.from({ length: 11 }).map((_, index) => (
+          <PostCard
+            key={`postId-${index}`}
+            id={`postId-${index}`}
+            title="What is the best productivity tool?"
+            author="Nico"
+            authorAvatarUrl="https://github.com/apple.png"
+            category="Productivity"
+            postedAt="12 hours ago"
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <h2 className="text-5xl font-bold leading-tight tracking-tight">
+            IdeasGPT
+          </h2>
+          <p className="text-xl font-light text-foreground">
+            Find ideas for your next project.
+          </p>
+          <Button variant="link" asChild className="text-lg p-0">
+            <Link to="/ideas">Explore all ideas &rarr;</Link>
+          </Button>
+        </div>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <IdeaCard
+            key={`ideaId-${index}`}
+            id={`ideaId-${index}`}
+            title="A startup that creates an AI-powered generated personal trainer, delivering customized fitness recommendations and tracking of progress using a mobile app to track workouts and progress as well as a website to manage the business."
+            viewsCount={123}
+            postedAt="12 hours ago"
+            likesCount={12}
+            claimed={index % 2 === 0}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <div>
+          <h2 className="text-5xl font-bold leading-tight tracking-tight">
+            Latest Jobs
+          </h2>
+          <p className="text-xl font-light text-foreground">
+            Find your dream job.
+          </p>
+          <Button variant="link" asChild className="text-lg p-0">
+            <Link to="/jobs">Explore all jobs &rarr;</Link>
+          </Button>
+        </div>
+        {Array.from({ length: 11 }).map((_, index) => (
+          <JobCard
+            key={`jobId-${index}`}
+            id={`jobId-${index}`}
+            company="Tesla"
+            companyLogoUrl="https://github.com/facebook.png"
+            companyHq="San Francisco, CA"
+            title="Software Engineer"
+            postedAt="12 hours ago"
+            type="Full-time"
+            positionLocation="Remote"
+            salary="$100,000 - $120,000"
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        <div>
+          <h2 className="text-5xl font-bold leading-tight tracking-tight">
+            Find a team mate
+          </h2>
+          <p className="text-xl font-light text-foreground">
+            Join a team looking for a new member.
+          </p>
+          <Button variant="link" asChild className="text-lg p-0">
+            <Link to="/wemake/teams">Explore all teams &rarr;</Link>
+          </Button>
+        </div>
+        {Array.from({ length: 7 }).map((_, index) => (
+          <TeamCard
+            key={`teamId-${index}`}
+            id={`teamId-${index}`}
+            leaderUsername="lynn"
+            leaderAvatarUrl="https://github.com/inthetiger.png"
+            positions={[
+              "React Developer",
+              "Backend Developer",
+              "Product Manager",
+            ]}
+            projectDescription="a new social media platform"
+          />
+        ))}
       </div>
     </div>
   );

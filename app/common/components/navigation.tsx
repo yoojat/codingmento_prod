@@ -73,7 +73,7 @@ const menus = [
   },
 
   { name: "수업듣기", to: "/lecture" },
-  { name: "수업기록", to: "/record" },
+  { name: "수업기록", to: "/studylogs" },
 ];
 
 export default function Navigation({
@@ -152,9 +152,8 @@ export default function Navigation({
                             key={item.name}
                             className={cn([
                               "select-none rounded-md transition-colors focus:bg-accent  hover:bg-accent",
-                              item.to === "#about" &&
-                                "col-span-2 bg-primary/10 hover:bg-primary/20 focus:bg-primary/20",
-                              item.to === "/jobs/submit" &&
+                              (item.to === "/products/promote" ||
+                                item.to === "/jobs/submit") &&
                                 "col-span-2 bg-primary/10 hover:bg-primary/20 focus:bg-primary/20",
                             ])}
                           >
@@ -190,7 +189,7 @@ export default function Navigation({
       {isLoggedIn ? (
         <div className="flex items-center gap-2 sm:gap-4">
           <Button size="icon" variant="ghost" asChild className="relative">
-            <Link to="/my/notifications">
+            <Link to="/wemake/my/notifications">
               <BellIcon className="size-4" />
               {hasNotifications && (
                 <div className="absolute top-1.5 right-1.5 size-2 bg-red-500 rounded-full" />
@@ -198,7 +197,7 @@ export default function Navigation({
             </Link>
           </Button>
           <Button size="icon" variant="ghost" asChild className="relative">
-            <Link to="/my/messages">
+            <Link to="/wemake/my/messages">
               <MessageCircleIcon className="size-4" />
               {hasMessages && (
                 <div className="absolute top-1.5 right-1.5 size-2 bg-red-500 rounded-full" />
@@ -220,19 +219,19 @@ export default function Navigation({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link to="/my/dashboard">
+                  <Link to="/wemake/my/dashboard">
                     <BarChart3Icon className="size-4 mr-2" />
                     Dashboard
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link to="/my/profile">
+                  <Link to="/wemake/my/profile">
                     <UserIcon className="size-4 mr-2" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link to="/my/settings">
+                  <Link to="/wemake/my/settings">
                     <SettingsIcon className="size-4 mr-2" />
                     Settings
                   </Link>
@@ -240,7 +239,7 @@ export default function Navigation({
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to="/auth/logout">
+                <Link to="/wemake/auth/logout">
                   <LogOutIcon className="size-4 mr-2" />
                   Logout
                 </Link>
@@ -255,13 +254,13 @@ export default function Navigation({
             variant="secondary"
             className="text-xs sm:text-sm px-2 sm:px-4"
           >
-            <Link to="/auth/login">Login</Link>
+            <Link to="/wemake/auth/login">Login</Link>
           </Button>
           <Button
             asChild
             className="bg-[#2563EB] text-xs sm:text-sm px-2 sm:px-4"
           >
-            <Link to="/auth/join">Join</Link>
+            <Link to="/wemake/auth/join">Join</Link>
           </Button>
         </div>
       )}
