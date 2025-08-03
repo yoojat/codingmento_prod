@@ -8,6 +8,9 @@ import {
 
 export default [
   index("common/pages/home.tsx"),
+  ...prefix("/lessons", [
+    route("/playground", "features/lesson/pages/playground.tsx"),
+  ]),
   ...prefix("/studylogs", [
     index("features/studylog/pages/study-logs.tsx"),
     layout("features/studylog/layouts/log-overview-layout.tsx", [

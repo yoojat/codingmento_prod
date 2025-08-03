@@ -1,17 +1,36 @@
-import type { MetaFunction } from "react-router";
 import { Hero } from "../components/wemake/cm-hero";
-
-export const meta: MetaFunction = () => {
-  return [
-    { title: "홈 | 코딩멘토" },
-    {
-      name: "description",
-      content: "코딩멘토는 실시간 코딩교유을 제공하는 플랫폼입니다.",
-    },
-  ];
-};
+import { useState, useEffect, useRef } from "react";
 
 export default function HomePage() {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [visibleImages, setVisibleImages] = useState<Set<number>>(new Set());
+  const galleryRef = useRef<HTMLDivElement>(null);
+
+  // Intersection Observer 설정
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = parseInt(
+              entry.target.getAttribute("data-index") || "0"
+            );
+            setVisibleImages((prev) => new Set([...prev, index]));
+          }
+        });
+      },
+      {
+        rootMargin: "50px",
+        threshold: 0.1,
+      }
+    );
+
+    const imageElements = document.querySelectorAll("[data-index]");
+    imageElements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
+
   // 1) 스케줄 데이터를 미리 정의합니다.
   const scheduleData = [
     {
@@ -298,6 +317,316 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      {/* 출강 문의 섹션 */}
+      <section id="lecture" className="mb-12 scroll-mt-24">
+        <h2 className="text-2xl font-bold mb-6">출강 문의 📚</h2>
+
+        {/* 강사 소개 및 경력 */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg mb-8">
+          <h3 className="text-xl font-bold mb-4 text-blue-800">강사 김태영</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-semibold text-lg mb-3 text-blue-700">
+                🎓 학력
+              </h4>
+              <ul className="space-y-2 text-sm">
+                <li>• 부산대학교 환경공학과 졸업</li>
+                <li>• 부산대학교 데이터사이언스 대학원 재학 중</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-lg mb-3 text-blue-700">
+                🏆 주요 자격증
+              </h4>
+              <ul className="space-y-1 text-sm">
+                <li>• SW코딩자격 1급 (한국생산성본부)</li>
+                <li>• 코딩활용능력 1급 (정보통신기술자격검정)</li>
+                <li>• AI Certificate for Everyone Junior</li>
+                <li>• AI Certificate for Everyone Basic</li>
+                <li>• AI FUTURE 3급 (KT/한국경제신문)</li>
+                <li>• AI FUTURE 2급 (KT/한국경제신문)</li>
+                <li>• AI FUTURE 1급 (KT/한국경제신문)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* 출강 경력 */}
+        <div className="mb-8">
+          <h3 className="text-xl font-bold mb-4">📋 주요 출강 경력</h3>
+          <div className="space-y-4">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-blue-600">2025.01.20</h4>
+                  <p className="font-medium">주택금융공사 신입사원 과정</p>
+                  <p className="text-gray-600">파이썬의 이해</p>
+                </div>
+                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                  기업교육
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-blue-600">
+                    2024.03 ~ 2025.01
+                  </h4>
+                  <p className="font-medium">부산자동차고등학교</p>
+                  <p className="text-gray-600">
+                    컴퓨터활용, AI Certificate for Everyone BASIC
+                  </p>
+                </div>
+                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                  고등학교
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-blue-600">
+                    2023.04 ~ 2024.10
+                  </h4>
+                  <p className="font-medium">연일초등학교</p>
+                  <p className="text-gray-600">AI 및 코딩 교육</p>
+                </div>
+                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                  초등학교
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-blue-600">
+                    2022.09 ~ 2024.4
+                  </h4>
+                  <p className="font-medium">충렬중학교</p>
+                  <p className="text-gray-600">파이썬, 웹개발 교육</p>
+                </div>
+                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                  중학교
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-blue-600">
+                    2023.05, 2023.12, 2024.11
+                  </h4>
+                  <p className="font-medium">부산대학교 환경공학과</p>
+                  <p className="text-gray-600">
+                    온신갈스 거동예측 코딩교육 및 대회(파이썬)
+                  </p>
+                </div>
+                <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                  대학교
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-blue-600">2022.05</h4>
+                  <p className="font-medium">삼성중공업 거제조선소</p>
+                  <p className="text-gray-600">파이썬 코딩 특강</p>
+                </div>
+                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                  기업교육
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-blue-600">2022 ~ 현재</h4>
+                  <p className="font-medium">초중고 100여개</p>
+                  <p className="text-gray-600">
+                    코딩 진로 특강, 코딩 수업 진행
+                  </p>
+                </div>
+                <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+                  다수기관
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 출강 사진 갤러리 */}
+        <div className="mb-8">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold mb-2">📸 출강 사진 갤러리</h3>
+            <p className="text-lg text-gray-600 mb-4">
+              <span className="font-bold text-blue-600">100+</span>개의 기관에서
+              검증받은
+              <span className="font-bold text-green-600">
+                {" "}
+                풍부한 출강 경험
+              </span>
+            </p>
+            <div className="flex justify-center items-center space-x-4 text-sm text-gray-500">
+              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                기업교육
+              </span>
+              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full">
+                학교
+              </span>
+              <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full">
+                대학교
+              </span>
+              <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full">
+                기타기관
+              </span>
+            </div>
+          </div>
+
+          {/* 메인 갤러리 그리드 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-6">
+            {Array.from({ length: 24 }).map((_, index) => (
+              <div
+                key={index}
+                className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200 cursor-pointer group"
+                onClick={() =>
+                  setSelectedImage(`/images/main/${index + 1}.jpg`)
+                }
+                data-index={index}
+              >
+                {visibleImages.has(index) ? (
+                  <img
+                    src={`/images/main/${index + 1}.jpg`}
+                    className="w-full h-full object-cover"
+                    alt={`출강 사진 ${index + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                    onError={() => {
+                      // DOM 조작 제거 - 이미지 에러는 무시
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-300 animate-pulse flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-2xl mb-1">📸</div>
+                      <div className="text-xs text-gray-500">로딩 중...</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* 하단 추가 갤러리 */}
+          <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-1">
+            {Array.from({ length: 48 }).map((_, index) => (
+              <div
+                key={index + 1}
+                className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded overflow-hidden hover:scale-110 transition-transform duration-200 cursor-pointer"
+                onClick={() =>
+                  setSelectedImage(`/images/submain/${index + 1}.jpg`)
+                }
+                data-index={index + 24}
+              >
+                {visibleImages.has(index + 24) ? (
+                  <img
+                    src={`/images/submain/${index + 1}.jpg`}
+                    className="w-full h-full object-cover"
+                    alt={`출강 사진 ${index + 25}`}
+                    loading="lazy"
+                    decoding="async"
+                    onError={() => {
+                      // DOM 조작 제거 - 이미지 에러는 무시
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-200 animate-pulse flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-lg">📷</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* 통계 정보 */}
+          <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div>
+                <div className="text-3xl font-bold text-blue-600">100+</div>
+                <div className="text-sm text-gray-600">총 출강 횟수</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-green-600">50+</div>
+                <div className="text-sm text-gray-600">학교/기관</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-purple-600">4년+</div>
+                <div className="text-sm text-gray-600">교육 경력</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-orange-600">1000+</div>
+                <div className="text-sm text-gray-600">교육생 수</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 사진 추가 안내 */}
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-500">
+              💡 실제 출강 사진들을 추가하시면 더욱 임팩트 있는 갤러리가
+              완성됩니다!
+            </p>
+          </div>
+        </div>
+
+        {/* 출강 문의 안내 */}
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-lg">
+          <h3 className="text-xl font-bold mb-4 text-green-800">
+            💼 출강 문의
+          </h3>
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              다양한 기관과 학교에서 검증받은 코딩 교육 경험을 바탕으로,
+              <strong>맞춤형 커리큘럼</strong>으로 출강해드립니다.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-semibold mb-2 text-green-700">
+                  🎯 주요 강의 분야
+                </h4>
+                <ul className="text-sm space-y-1 text-gray-600">
+                  <li>• 파이썬 프로그래밍 기초/심화</li>
+                  <li>• 블록코딩 (엔트리, 스크래치)</li>
+                  <li>• AI/머신러닝 입문</li>
+                  <li>• 데이터 분석 및 시각화</li>
+                  <li>• 코딩 자격증 대비</li>
+                  <li>• 진로 연계 코딩 교육</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2 text-green-700">
+                  📞 문의 방법
+                </h4>
+                <div className="text-sm space-y-2 text-gray-600">
+                  <p>• 전화: 010-2315-2572</p>
+                  <p>• 문자로 연락주시면 상세한 안내를 드립니다</p>
+                  <p>• 기관별 맞춤형 제안서 제공</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section id="faq" className="mb-12 scroll-mt-24">
         <h2 className="text-2xl font-bold mb-2">FAQ</h2>
@@ -391,6 +720,31 @@ export default function HomePage() {
           </details>
         </div>
       </section>
+
+      {/* 이미지 모달 */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-full">
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 text-white text-4xl hover:text-gray-300 transition-colors"
+            >
+              ×
+            </button>
+            <img
+              src={selectedImage}
+              alt="출강 사진 상세보기"
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              loading="eager"
+              decoding="sync"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="text-center text-gray-400 text-xs mt-12">
         0Tae © 2025 All Rights Reserved

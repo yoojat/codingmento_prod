@@ -69,13 +69,17 @@ const menus = [
         description: "자주하는 질문들",
         to: "/#faq",
       },
+      {
+        name: "출강문의",
+        description: "출강문의",
+        to: "/#lecture",
+      },
     ],
   },
 
   {
     name: "수업듣기",
-    to: "https://discord.gg/fAnKyYS8",
-    target: "_blank",
+    to: "/lessons/playground",
   },
   { name: "수업기록", to: "/studylogs" },
 ];
