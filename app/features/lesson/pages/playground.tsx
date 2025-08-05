@@ -1,6 +1,8 @@
 // src/components/Playground.tsx
 import { useState, useEffect } from "react";
 import { useSkulptRunner } from "~/hooks/use-skulpt-runner";
+import CodeMirror from "@uiw/react-codemirror";
+import { python } from "@codemirror/lang-python";
 
 export default function Playground() {
   const { loaded, error, output, run, canvasRef } = useSkulptRunner();
@@ -24,12 +26,25 @@ export default function Playground() {
     <div style={{ padding: "1rem" }}>
       <h3>🐢 Skulpt Python Runner</h3>
 
-      <textarea
+      {/* ↓ CodeMirror 에디터로 교체 ↓ */}
+      <CodeMirror
         value={code}
-        onChange={(e) => setCode(e.target.value)}
-        rows={10}
-        cols={60}
-        style={{ fontFamily: "monospace", fontSize: "1rem" }}
+        height="300px"
+        extensions={[python()]}
+        onChange={(value) => setCode(value)}
+        basicSetup={{
+          lineNumbers: true,
+          highlightActiveLine: true,
+          highlightActiveLineGutter: true,
+          indentOnInput: true,
+          bracketMatching: true,
+          foldGutter: true,
+          defaultKeymap: true,
+          history: true,
+          multipleSelections: true,
+        }}
+        theme="light"
+        style={{ marginBottom: "1rem", border: "1px solid #ddd" }}
       />
 
       <br />
