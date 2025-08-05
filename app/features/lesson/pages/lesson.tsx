@@ -12,5 +12,16 @@ export default function Lesson() {
     }
   }, [socket]);
 
-  return <div>Lesson</div>;
+  return (
+    <div>
+      <div id="welcome">
+        <h2>Welcome to the Chat!!</h2>
+        <p>Please enter your room to continue</p>
+      </div>
+      <form>
+        <input id="message-input" placeholder="room name" />
+        <button id="send-button">Enter Room</button>
+      </form>
+    </div>
+  );
 }

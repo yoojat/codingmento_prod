@@ -3,7 +3,6 @@ import path from "path";
 import express from "express";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
-import { createRequestHandler } from "@react-router/express";
 import * as serverBuild from "./build/server/index.js";
 
 // 1) React Router 빌드 산출물이 위치한 디렉터리
@@ -30,17 +29,25 @@ io.on("connection", (socket) => {
   );
 });
 
+if (process.env.NODE_ENV === "production") {
+  const { createRequestHandler } = await import("@react-router/express");
+  const BUILD_DIR = path.resolve("./build");
+  const serverBuild = await import("./build/server/index.js");
+
+  app.use(express.static(path.join(BUILD_DIR, "client"), { maxAge: "1h" }));
+  app.all(
+    /.*/, // 슬래시 포함 모든 경로
+    createRequestHandler({
+      build: serverBuild,
+      mode: process.env.NODE_ENV || "development",
+    })
+  );
+}
+
 // 5) 문자열 패턴 대신 정규식으로
-app.all(
-  /.*/, // 슬래시 포함 모든 경로
-  createRequestHandler({
-    build: serverBuild,
-    mode: process.env.NODE_ENV || "development",
-  })
-);
 
 // 6) 서버 시작
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`🚀 서버 실행 중 → http://localhost:${PORT}`);
 });

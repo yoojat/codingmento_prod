@@ -1,23 +1,18 @@
 // src/hooks/useSocket.ts
-import { useRef, useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 
-export function useSocket(): Socket | null {
-  const socketRef = useRef<Socket | null>(null);
-
+export function useSocket() {
+  const ref = useRef<Socket | null>(null);
   useEffect(() => {
-    const socket = io({
-      path: "/socket.io",
+    const socket = io("http://localhost:3001", {
       transports: ["websocket"],
     });
-    socketRef.current = socket;
-
-    socket.on("connect", () => console.log("🔌 Socket.IO 연결됨:", socket.id));
-
+    ref.current = socket;
+    socket.on("connect", () => console.log("Socket connected", socket.id));
     return () => {
       socket.disconnect();
     };
   }, []);
-
-  return socketRef.current;
+  return ref.current;
 }
