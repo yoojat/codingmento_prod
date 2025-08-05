@@ -80,6 +80,18 @@ const menus = [
   {
     name: "수업듣기",
     to: "/lessons/playground",
+    items: [
+      {
+        name: "플레이그라운드",
+        description: "플레이그라운드",
+        to: "/lessons/playground",
+      },
+      {
+        name: "강의듣기",
+        description: "강의듣기",
+        to: "/lessons/lesson",
+      },
+    ],
   },
   { name: "수업기록", to: "/studylogs" },
 ];
