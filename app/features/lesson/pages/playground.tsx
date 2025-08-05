@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { useSkulptRunner } from "~/hooks/use-skulpt-runner";
 import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
+import { keymap } from "@codemirror/view";
+import { defaultKeymap, historyKeymap } from "@codemirror/commands";
 
 export default function Playground() {
   const { loaded, error, output, run, canvasRef } = useSkulptRunner();
@@ -22,6 +24,20 @@ export default function Playground() {
     localStorage.setItem("user-code", code);
   }, [code]);
 
+  // 1) Mod-Enter 키 눌렀을 때 run 실행
+  const runKeymap = keymap.of([
+    {
+      key: "Mod-Enter",
+      run: () => {
+        run(code);
+        return true; // 기본 동작(엔터 입력 등) 막음
+      },
+    },
+  ]);
+  // 2) 기본 키맵 & 히스토리 키맵을 Extension 으로 변환
+  const defaultKeymapExt = keymap.of(defaultKeymap);
+  const historyKeymapExt = keymap.of(historyKeymap);
+
   return (
     <div style={{ padding: "1rem" }}>
       <h3>🐢 Skulpt Python Runner</h3>
@@ -30,7 +46,12 @@ export default function Playground() {
       <CodeMirror
         value={code}
         height="300px"
-        extensions={[python()]}
+        extensions={[
+          runKeymap, // ← 1순위
+          python(), // 언어 모드
+          defaultKeymapExt, // 이후에 기본키맵
+          historyKeymapExt, // 히스토리(undo/redo) 키맵
+        ]}
         onChange={(value) => setCode(value)}
         basicSetup={{
           lineNumbers: true,
@@ -39,9 +60,9 @@ export default function Playground() {
           indentOnInput: true,
           bracketMatching: true,
           foldGutter: true,
-          defaultKeymap: true,
+          defaultKeymap: false,
           history: true,
-          multipleSelections: true,
+          allowMultipleSelections: true,
         }}
         theme="light"
         style={{ marginBottom: "1rem", border: "1px solid #ddd" }}
