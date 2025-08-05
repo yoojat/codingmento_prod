@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSkulpt } from "~/hooks/use-skulpt";
 // 파일 상단 또는 사용하기 전에 선언
 declare global {
   interface Window {
@@ -6,6 +7,7 @@ declare global {
   }
 }
 export default function Playground() {
+  const { loaded, error } = useSkulpt();
   const [code, setCode] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("user-code") || `print("Hello World")`;
@@ -15,39 +17,17 @@ export default function Playground() {
   const outputRef = useRef<HTMLPreElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // 외부 스크립트 로딩
-  useEffect(() => {
-    const loadScript = (src: string): Promise<void> =>
-      new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = src;
-        script.async = false; // ✅ 순서 보장
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load ${src}`));
-        document.body.appendChild(script);
-      });
-
-    async function loadSkulpt() {
-      try {
-        await loadScript(
-          "https://cdn.jsdelivr.net/npm/skulpt@latest/dist/skulpt.min.js"
-        );
-        await loadScript(
-          "https://cdn.jsdelivr.net/npm/skulpt@latest/dist/skulpt-stdlib.js"
-        );
-        console.log("Skulpt scripts loaded.");
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    loadSkulpt();
-  }, []);
   const runCode = () => {
-    if (!window.Sk || !window.Sk.misceval) {
-      alert("Skulpt가 아직 준비되지 않았습니다.");
+    if (!loaded) {
+      alert("Skulpt가 아직 로딩 중입니다.");
       return;
     }
+    if (error) {
+      console.error(error);
+      alert("Skulpt 로딩 에러: " + error.message);
+      return;
+    }
+    // 이제 window.Sk.configure(...) 등 Skulpt API 호출 가능
 
     if (outputRef.current) {
       outputRef.current.innerText = "";
@@ -118,7 +98,14 @@ export default function Playground() {
         style={{ fontFamily: "monospace", fontSize: "1rem" }}
       />
       <br />
-      <button onClick={runCode}>▶️ Run</button>
+
+      <button onClick={runCode} disabled={!loaded || !!error}>
+        ▶️ Run
+      </button>
+      {!loaded && !error && <p>Skulpt 로딩 중…</p>}
+      {error && (
+        <p style={{ color: "red" }}>Skulpt 로딩 실패: {error.message}</p>
+      )}
       <pre
         id="output"
         ref={outputRef}
