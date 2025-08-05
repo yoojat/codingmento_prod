@@ -122,3 +122,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* index.css */
+/* src/index.css */
+#skulpt-container canvas {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  /* 스케일링 제거 — 내부 해상도 그대로 표시 */
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-sizing: border-box;
+}

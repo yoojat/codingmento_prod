@@ -92,14 +92,18 @@ export default function Playground() {
       </pre>
 
       {/* Turtle 그래픽용 <div> */}
+      {/* Turtle 그래픽용 컨테이너 */}
       <div
         id="skulpt-canvas"
         ref={canvasRef}
         style={{
-          width: "800px",
-          height: "600px",
+          width: "100%", // 화면 가로 100%
+          maxWidth: "100%", // 부모 너비 제한
+          position: "relative",
+          margin: "1em 0",
           border: "1px solid #ccc",
-          marginTop: "1em",
+          /* 높이는 JS에서 설정한 픽셀 높이를 CSS height에 반영해 주지 않아도 됩니다.
+       Skulpt가 직접 <canvas width=... height=...> 를 생성하므로 */
         }}
       />
     </div>
