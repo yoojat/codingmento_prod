@@ -13,6 +13,7 @@ export function useSocket(): Socket | null {
     );
     socketRef.current = socket;
     socket.on("connect", () => console.log("Socket connected", socket.id));
+
     return () => {
       socket.disconnect();
     };
