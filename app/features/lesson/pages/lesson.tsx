@@ -1,393 +1,5 @@
-// import { useEffect, useRef, useState, useCallback } from "react";
-// import { useSocket } from "../../../hooks/use-socket";
-// import { Button } from "~/common/components/ui/button";
-// import { Input } from "~/common/components/ui/input";
-// import MediaComponent from "../components/media";
-// import Face from "~/features/studylog/components/face";
-
-// export default function Lesson() {
-//   const socket = useSocket();
-//   const [joined, setJoined] = useState(false);
-//   const [roomName, setRoomName] = useState("");
-//   const roomNameRef = useRef("");
-//   const [messages, setMessages] = useState<string[]>([]);
-//   const [newMessage, setNewMessage] = useState("");
-//   const [nickname, setNickname] = useState("");
-//   const [publicRooms, setPublicRooms] = useState<string[]>([]);
-//   const [count, setCount] = useState<number>(0);
-//   const [myPeerConnection, setMyPeerConnection] =
-//     useState<RTCPeerConnection | null>(null);
-//   const myPeerConnectionRef = useRef<RTCPeerConnection | null>(null);
-//   const myFaceRef = useRef<HTMLVideoElement>(null);
-//   const myDataChannelRef = useRef<RTCDataChannel | null>(null);
-
-//   // roomName state와 ref를 동기화
-//   useEffect(() => {
-//     roomNameRef.current = roomName;
-//   }, [roomName]);
-
-//   // myPeerConnection state와 ref를 동기화
-//   useEffect(() => {
-//     myPeerConnectionRef.current = myPeerConnection;
-//   }, [myPeerConnection]);
-
-//   // 서버가 콜백으로 호출해 주면 화면 전환
-//   const handleBackendDone = async (count: number) => {
-//     setCount(count);
-//     setJoined(true);
-//     await makeConnection();
-//   };
-
-//   const handleNewMessage = (msg: string) => {
-//     setMessages((prev) => [...prev, msg]);
-//   };
-
-//   const makeConnection = useCallback(async () => {
-//     console.log("makeConnection called");
-//     const peerConnection = new RTCPeerConnection({
-//       iceServers: [
-//         {
-//           urls: [
-//             "stun:stun.l.google.com:19302",
-//             "stun:stun1.l.google.com:19302",
-//             "stun:stun2.l.google.com:19302",
-//             "stun:stun3.l.google.com:19302",
-//             "stun:stun4.l.google.com:19302",
-//           ],
-//         },
-//       ],
-//     });
-
-//     // 연결 상태 모니터링
-//     peerConnection.onconnectionstatechange = () => {
-//       console.log(
-//         "Connection state changed to:",
-//         peerConnection.connectionState
-//       );
-//     };
-
-//     peerConnection.oniceconnectionstatechange = () => {
-//       console.log(
-//         "ICE connection state changed to:",
-//         peerConnection.iceConnectionState
-//       );
-//     };
-
-//     peerConnection.onicegatheringstatechange = () => {
-//       console.log(
-//         "ICE gathering state changed to:",
-//         peerConnection.iceGatheringState
-//       );
-//     };
-
-//     peerConnection.onicecandidate = (e) => {
-//       console.log("sent ice candidate");
-//       socket?.emit("ice", e.candidate, roomNameRef.current);
-//     };
-
-//     peerConnection.ontrack = (e) => {
-//       myFaceRef.current!.srcObject = e.streams[0];
-//     };
-
-//     try {
-//       // 미디어 스트림 가져오기
-//       const stream = await navigator.mediaDevices.getUserMedia({
-//         video: true,
-//         audio: true,
-//       });
-
-//       // 모든 트랙을 peer connection에 추가
-//       stream.getTracks().forEach((track) => {
-//         peerConnection.addTrack(track, stream);
-//       });
-
-//       setMyPeerConnection(peerConnection);
-//     } catch (error) {
-//       console.log("error : ", error);
-//       setMyPeerConnection(peerConnection); // 스트림 없이라도 연결 시도
-//     }
-//   }, [socket]);
-
-//   // 서버의 'welcome' 이벤트를 수신해서 messages에 추가
-//   useEffect(() => {
-//     if (!socket) return;
-
-//     socket.on("welcome", (user, count) => {
-//       handleNewMessage(`${user}님이 입장했습니다.`);
-//       setCount(count);
-
-//       // 새로운 사용자가 들어왔을 때만 offer를 생성하는 기존 사용자가 데이터 채널을 생성
-//       if (myPeerConnectionRef.current && count > 1) {
-//         console.log("Creating data channel for new user");
-//         const dataChannel = myPeerConnectionRef.current.createDataChannel(
-//           "chat",
-//           {
-//             ordered: true,
-//           }
-//         );
-
-//         dataChannel.onopen = () => {
-//           console.log("Data channel opened successfully");
-//           myDataChannelRef.current = dataChannel;
-//         };
-
-//         dataChannel.onmessage = (e) => {
-//           console.log("Received message via data channel:", e.data);
-//           handleNewMessage(`상대방: ${e.data}`);
-//         };
-
-//         dataChannel.onerror = (error) => {
-//           console.error("Data channel error:", error);
-//         };
-
-//         dataChannel.onclose = () => {
-//           console.log("Data channel closed");
-//           myDataChannelRef.current = null;
-//         };
-
-//         // offer 생성 및 전송
-//         if (
-//           joined &&
-//           myPeerConnectionRef.current &&
-//           socket &&
-//           roomNameRef.current
-//         ) {
-//           myPeerConnectionRef.current.createOffer().then((offer) => {
-//             myPeerConnectionRef.current?.setLocalDescription(offer);
-//             console.log("sent offer to room:", roomNameRef.current);
-//             socket.emit("offer", offer, roomNameRef.current);
-//           });
-//         }
-//       }
-//     });
-
-//     socket.on("offer", async (offer) => {
-//       console.log("received offer");
-//       console.log(myPeerConnectionRef.current);
-
-//       if (myPeerConnectionRef.current) {
-//         // 데이터 채널 수신 리스너 설정
-//         myPeerConnectionRef.current.ondatachannel = (e) => {
-//           console.log("Data channel received:", e.channel.label);
-//           const receivedChannel = e.channel;
-
-//           receivedChannel.onopen = () => {
-//             console.log("Received data channel opened successfully");
-//             myDataChannelRef.current = receivedChannel;
-//           };
-
-//           receivedChannel.onmessage = (e) => {
-//             console.log("Received message via data channel:", e.data);
-//             handleNewMessage(`상대방: ${e.data}`);
-//           };
-
-//           receivedChannel.onerror = (error) => {
-//             console.error("Received data channel error:", error);
-//           };
-
-//           receivedChannel.onclose = () => {
-//             console.log("Received data channel closed");
-//             myDataChannelRef.current = null;
-//           };
-//         };
-
-//         await myPeerConnectionRef.current.setRemoteDescription(offer);
-//         const answer = await myPeerConnectionRef.current.createAnswer();
-//         await myPeerConnectionRef.current.setLocalDescription(answer);
-//         console.log("sent answer");
-//         socket.emit("answer", answer, roomNameRef.current);
-//       }
-//     });
-
-//     socket.on("answer", (answer) => {
-//       console.log("received answer");
-//       myPeerConnectionRef.current?.setRemoteDescription(answer);
-//     });
-
-//     socket.on("ice", (ice) => {
-//       myPeerConnectionRef.current?.addIceCandidate(ice);
-//     });
-
-//     socket.on("bye", (id, count) => {
-//       handleNewMessage(`${id}님이 나갔습니다.`);
-//       setCount(count);
-//     });
-//     // socket.on("new_message", (msg) => {
-//     //   handleNewMessage(msg);
-//     // });
-
-//     socket.on("room_change", (rooms) => {
-//       setPublicRooms(rooms);
-//     });
-
-//     return () => {
-//       socket.off("welcome");
-//       socket.off("offer");
-//       socket.off("answer");
-//       socket.off("ice");
-//       socket.off("bye");
-//       socket.off("new_message");
-//       socket.off("room_change");
-//     };
-//   }, [socket, makeConnection]);
-
-//   // 폼 제출 핸들러 (enter_room 이벤트 전송)
-//   const handleRoomSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-//     e.preventDefault();
-//     if (!socket || !roomName || !nickname) return;
-
-//     socket.emit("nickname", nickname);
-//     socket.emit("enter_room", roomName, handleBackendDone);
-//   };
-
-//   const handleMessageSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-//     e.preventDefault();
-//     console.log("handleMessageSubmit called");
-//     console.log("Data channel state:", myDataChannelRef.current?.readyState);
-//     console.log(
-//       "Peer connection state:",
-//       myPeerConnectionRef.current?.connectionState
-//     );
-//     console.log(
-//       "ICE connection state:",
-//       myPeerConnectionRef.current?.iceConnectionState
-//     );
-
-//     if (myDataChannelRef.current?.readyState === "open") {
-//       myDataChannelRef.current.send(newMessage);
-//       handleNewMessage(`나: ${newMessage}`);
-//       setNewMessage("");
-//     } else {
-//       console.error(
-//         "Data channel is not open. State:",
-//         myDataChannelRef.current?.readyState
-//       );
-
-//       // 디버깅을 위한 추가 정보
-//       if (!myDataChannelRef.current) {
-//         handleNewMessage("데이터 채널이 생성되지 않았습니다.");
-//       } else {
-//         handleNewMessage(
-//           `데이터 채널 상태: ${myDataChannelRef.current.readyState}`
-//         );
-//       }
-
-//       // 연결 재시도 로직
-//       if (
-//         myPeerConnectionRef.current?.connectionState === "connected" &&
-//         !myDataChannelRef.current
-//       ) {
-//         console.log("Attempting to recreate data channel...");
-//         const dataChannel = myPeerConnectionRef.current.createDataChannel(
-//           "chat",
-//           {
-//             ordered: true,
-//           }
-//         );
-
-//         dataChannel.onopen = () => {
-//           console.log("Recreated data channel opened successfully");
-//           myDataChannelRef.current = dataChannel;
-//           handleNewMessage("데이터 채널이 다시 연결되었습니다.");
-//         };
-
-//         dataChannel.onmessage = (e) => {
-//           console.log("Received message via recreated data channel:", e.data);
-//           handleNewMessage(`상대방: ${e.data}`);
-//         };
-
-//         dataChannel.onerror = (error) => {
-//           console.error("Recreated data channel error:", error);
-//         };
-//       }
-//     }
-//   };
-
-//   // 첫 번째 사용자는 대기만 함 (데이터 채널 생성은 두 번째 사용자가 들어올 때)
-//   useEffect(() => {
-//     if (
-//       joined &&
-//       myPeerConnection &&
-//       socket &&
-//       roomNameRef.current &&
-//       count === 1
-//     ) {
-//       console.log("First user in room, waiting for other users...");
-//     }
-//   }, [joined, myPeerConnection, socket, count]);
-
-//   return (
-//     <div className="p-6 max-w-md mx-auto">
-//       {!joined ? (
-//         <div id="welcome" className="space-y-4">
-//           <h2 className="text-2xl font-bold">방번호를 입력해주세요!</h2>
-//           <p>방번호를 입력하면 방에 입장합니다.</p>
-
-//           <form onSubmit={handleRoomSubmit} className="flex flex-col space-y-2">
-//             <Input
-//               type="text"
-//               required
-//               placeholder="방번호"
-//               value={roomName}
-//               onChange={(e) => setRoomName(e.target.value.trim())}
-//             />
-//             <Input
-//               type="text"
-//               required
-//               placeholder="닉네임"
-//               value={nickname}
-//               onChange={(e) => setNickname(e.target.value.trim())}
-//             />
-//             <Button
-//               className="hover:cursor-pointer"
-//               type="submit"
-//               disabled={!socket}
-//             >
-//               입장
-//             </Button>
-//           </form>
-//           <h4>Public Rooms</h4>
-//           <ul>
-//             {publicRooms.map((room) => (
-//               <li key={room}>{room}</li>
-//             ))}
-//           </ul>
-//         </div>
-//       ) : (
-//         <div id="room" className="space-y-4">
-//           <h3 className="text-xl font-semibold">Room {roomName}</h3>
-//           <p>서버가 입장을 확인했습니다! {count}명 입장</p>
-//           {/* 들어온 welcome 메시지들을 리스트로 표시 */}
-//           <ul className="list-disc pl-5 space-y-1">
-//             {messages.map((msg, i) => (
-//               <li key={i}>{msg}</li>
-//             ))}
-//           </ul>
-//           <form onSubmit={handleMessageSubmit} className="flex space-x-2">
-//             <input
-//               type="text"
-//               placeholder="메시지를 입력해주세요."
-//               required
-//               value={newMessage}
-//               onChange={(e) => setNewMessage(e.target.value)}
-//             />
-//             <Button
-//               className="hover:cursor-pointer"
-//               variant={"secondary"}
-//               disabled={myDataChannelRef.current?.readyState !== "open"}
-//             >
-//               전송
-//             </Button>
-//           </form>
-//         </div>
-//       )}
-//       <MediaComponent myPeerConnection={myPeerConnection ?? undefined} />
-//       <Face myFaceRef={myFaceRef} />
-//     </div>
-//   );
-// }
-
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { useSocket } from "../../../hooks/use-socket";
 import { Input } from "~/common/components/ui/input";
 import { Button } from "~/common/components/ui/button";
@@ -406,7 +18,7 @@ interface Camera {
 
 export default function Lesson() {
   const socket = useSocket();
-
+  const navigate = useNavigate();
   // UI State
   const [isWelcomeHidden, setIsWelcomeHidden] = useState(false);
   const [inputRoomName, setInputRoomName] = useState("");
@@ -425,6 +37,22 @@ export default function Lesson() {
   const myStreamRef = useRef<MediaStream | null>(null);
   const myPeerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const myDataChannelRef = useRef<RTCDataChannel | null>(null);
+
+  // 다중 연결 관리
+  const [connectedUsers, setConnectedUsers] = useState(new Map());
+  // userId => {name, isVideoOn, isAudioOn}
+
+  const peerConnections = useRef(new Map());
+  // userId -> RTCPeerConnection
+
+  const dataChannels = useRef(new Map());
+  // userId -> RTCDataChannel
+
+  const remoteVideoRefs = useRef(new Map());
+  // userId -> HTMLVideoElement ref
+
+  const remoteStreams = useRef(new Map());
+  // userId -> MediaStream
 
   // Get available cameras
   const getCameras = useCallback(async () => {
@@ -621,17 +249,17 @@ export default function Lesson() {
     socket.on("welcome", async () => {
       console.log("📥 Welcome received - creating offer!!!!!!");
       if (myPeerConnectionRef.current) {
-        const dataChannel =
-          myPeerConnectionRef.current.createDataChannel("chat");
-        myDataChannelRef.current = dataChannel;
+        // const dataChannel =
+        //   myPeerConnectionRef.current.createDataChannel("chat");
+        // myDataChannelRef.current = dataChannel;
 
-        dataChannel.onmessage = (event) => {
-          console.log("Received message via data channel:", event.data);
-        };
+        // dataChannel.onmessage = (event) => {
+        //   console.log("Received message via data channel:", event.data);
+        // };
 
-        dataChannel.onopen = () => {
-          console.log("Data channel opened");
-        };
+        // dataChannel.onopen = () => {
+        //   console.log("Data channel opened");
+        // };
 
         // Create and send offer
         try {
@@ -645,24 +273,40 @@ export default function Lesson() {
       }
     });
 
+    socket.on("room_users", (users) => {
+      console.log("Received room users:", users);
+      setConnectedUsers(new Map(users.map((user: string) => [user, {}])));
+
+      try {
+        for (const user of users) {
+          if (user !== socket.id) {
+            const peerConnection = makeConnection(user);
+            peerConnections.current.set(user, peerConnection);
+          }
+        }
+      } catch (error) {
+        console.error("Error reconnecting to users:", error);
+      }
+    });
+
     socket.on("offer", async (offer) => {
       console.log("Received offer");
       if (myPeerConnectionRef.current) {
         // Set up data channel receiver
 
-        myPeerConnectionRef.current.ondatachannel = (event) => {
-          console.log("Received data channel");
-          const dataChannel = event.channel;
-          myDataChannelRef.current = dataChannel;
+        // myPeerConnectionRef.current.ondatachannel = (event) => {
+        //   console.log("Received data channel");
+        //   const dataChannel = event.channel;
+        //   myDataChannelRef.current = dataChannel;
 
-          dataChannel.onmessage = (event) => {
-            console.log("Received message via data channel:", event.data);
-          };
+        //   dataChannel.onmessage = (event) => {
+        //     console.log("Received message via data channel:", event.data);
+        //   };
 
-          dataChannel.onopen = () => {
-            console.log("Data channel opened");
-          };
-        };
+        //   dataChannel.onopen = () => {
+        //     console.log("Data channel opened");
+        //   };
+        // };
 
         try {
           await myPeerConnectionRef.current.setRemoteDescription(offer);
@@ -823,15 +467,6 @@ export default function Lesson() {
           </div>
         </div>
       )}
-
-      <Button
-        onClick={() => {
-          console.log(myDataChannelRef.current);
-          myDataChannelRef.current?.send("bye");
-        }}
-      >
-        나가기
-      </Button>
     </div>
   );
 }
