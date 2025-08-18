@@ -500,10 +500,69 @@ export default function Lesson() {
     [getMedia]
   );
 
-  // 하단 비디오 스트립을 위한 그리드 클래스 계산 (항상 4개씩)
-  const getBottomVideoGridClass = () => {
-    return "grid-cols-4 gap-2";
+  // 하단 비디오 스트립을 위한 그리드 클래스와 비디오 크기 계산 (2배 크기)
+  const getVideoLayoutConfig = (totalUsers: number) => {
+    if (totalUsers === 1) {
+      return {
+        gridClass: "flex justify-center",
+        videoHeight: "h-80", // 320px - 혼자일 때 가장 크게 (160px -> 320px)
+        videoWidth: "w-64", // 256px (128px -> 256px)
+        containerClass: "flex justify-center items-center",
+      };
+    } else if (totalUsers === 2) {
+      return {
+        gridClass: "grid grid-cols-2 gap-6 justify-center",
+        videoHeight: "h-72", // 288px - 둘일 때 크게 (144px -> 288px)
+        videoWidth: "w-56", // 224px (112px -> 224px)
+        containerClass: "flex justify-center",
+      };
+    } else if (totalUsers <= 4) {
+      return {
+        gridClass: `grid grid-cols-${totalUsers} gap-4 justify-center`,
+        videoHeight: "h-64", // 256px (128px -> 256px)
+        videoWidth: "w-48", // 192px (96px -> 192px)
+        containerClass: "flex justify-center",
+      };
+    } else if (totalUsers <= 6) {
+      return {
+        gridClass: `grid grid-cols-${totalUsers} gap-3 justify-center`,
+        videoHeight: "h-56", // 224px (112px -> 224px)
+        videoWidth: "w-40", // 160px (80px -> 160px)
+        containerClass: "flex justify-center",
+      };
+    } else if (totalUsers <= 8) {
+      return {
+        gridClass: `grid grid-cols-${totalUsers} gap-2 justify-center`,
+        videoHeight: "h-48", // 192px (96px -> 192px)
+        videoWidth: "w-32", // 128px (64px -> 128px)
+        containerClass: "flex justify-center",
+      };
+    } else {
+      // 8명 초과시에도 8열 유지, 더 작게
+      return {
+        gridClass: "grid grid-cols-8 gap-2 justify-center",
+        videoHeight: "h-40", // 160px (80px -> 160px)
+        videoWidth: "w-28", // 112px (56px -> 112px)
+        containerClass: "flex justify-center",
+      };
+    }
   };
+
+  // 비디오 영역이 다시 보일 때 스트림 재연결
+  useEffect(() => {
+    if (isVideoAreaVisible && myStreamRef.current && myFaceRef.current) {
+      // 내 비디오 재연결
+      myFaceRef.current.srcObject = myStreamRef.current;
+
+      // 원격 비디오들 재연결
+      for (const [userId, stream] of remoteStreams.current.entries()) {
+        const videoElement = remoteVideoRefs.current.get(userId);
+        if (videoElement && stream) {
+          videoElement.srcObject = stream;
+        }
+      }
+    }
+  }, [isVideoAreaVisible]);
 
   // 정리
   useEffect(() => {
@@ -551,9 +610,16 @@ export default function Lesson() {
         <div className="h-screen flex flex-col relative">
           {/* 상단 헤더 */}
           <div className="flex justify-between items-center p-4 bg-white border-b">
-            <h2 className="text-2xl font-bold">
-              방: {roomName} ({connectedUsers.size + 1}명)
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold">
+                방: {roomName} ({connectedUsers.size + 1}/8명)
+              </h2>
+              {connectedUsers.size + 1 > 4 && (
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                  고밀도 모드
+                </span>
+              )}
+            </div>
             <div className="text-sm text-gray-600">
               내 ID: {myNickname} ({myUserId.slice(-8)})
             </div>
@@ -639,94 +705,107 @@ export default function Lesson() {
             </div>
 
             {/* 비디오 스트립 - 조건부 렌더링 */}
-            {isVideoAreaVisible && (
-              <div
-                className={`grid ${getBottomVideoGridClass()} max-w-6xl mx-auto`}
-              >
-                {/* 내 비디오 */}
-                <div className="relative">
-                  <div className="relative group">
-                    <video
-                      ref={myFaceRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-24 object-cover rounded-lg border border-gray-300 bg-gray-800"
-                      style={{ transform: "scaleX(-1)" }}
-                    />
-                    {isCameraOff && (
-                      <div className="absolute inset-0 bg-black rounded-lg flex items-center justify-center">
-                        <p className="text-white text-xs">Camera Off</p>
-                      </div>
-                    )}
-                    {/* 사용자 이름 라벨 */}
-                    <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white px-2 py-0.5 rounded text-xs">
-                      {myNickname} (나)
-                    </div>
-                    {/* 상태 표시 */}
-                    <div className="absolute top-1 right-1 flex space-x-1">
-                      {isMuted && (
-                        <div className="bg-red-500 text-white p-1 rounded text-xs">
-                          🔇
-                        </div>
-                      )}
-                      {isCameraOff && (
-                        <div className="bg-red-500 text-white p-1 rounded text-xs">
-                          📷
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+            {isVideoAreaVisible &&
+              (() => {
+                const totalUsers = connectedUsers.size + 1;
+                const config = getVideoLayoutConfig(totalUsers);
 
-                {/* 원격 사용자들 */}
-                {Array.from(connectedUsers.entries()).map(
-                  ([userId, userInfo]) => (
-                    <div key={userId} className="relative">
-                      <div className="relative group">
-                        <video
-                          ref={(el) => {
-                            if (el) {
-                              remoteVideoRefs.current.set(userId, el);
-                              const stream = remoteStreams.current.get(userId);
-                              if (stream) {
-                                el.srcObject = stream;
-                                console.log("stream", stream);
+                return (
+                  <div className={`${config.containerClass} w-full`}>
+                    <div className={`${config.gridClass} max-w-fit`}>
+                      {/* 내 비디오 */}
+                      <div className="relative flex-shrink-0">
+                        <div className="relative group">
+                          <video
+                            ref={(el) => {
+                              myFaceRef.current = el;
+                              if (el && myStreamRef.current) {
+                                el.srcObject = myStreamRef.current;
+                                console.log("My video stream reconnected");
                               }
-                            }
-                          }}
-                          autoPlay
-                          playsInline
-                          className="w-full h-24 object-cover rounded-lg border border-gray-300 bg-gray-800"
-                          style={{ transform: "scaleX(-1)" }}
-                        />
-                        {/* 사용자 이름 라벨 */}
-                        <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white px-2 py-0.5 rounded text-xs">
-                          {userInfo.nickname}
-                        </div>
-                        {/* 연결 상태 */}
-                        <div className="absolute top-1 right-1">
-                          <div className="bg-green-500 text-white p-1 rounded text-xs">
-                            ●
+                            }}
+                            autoPlay
+                            playsInline
+                            muted
+                            className={`${config.videoWidth} ${config.videoHeight} object-cover rounded-lg border border-gray-300 bg-gray-800`}
+                            style={{ transform: "scaleX(-1)" }}
+                          />
+                          {isCameraOff && (
+                            <div className="absolute inset-0 bg-black rounded-lg flex items-center justify-center">
+                              <p className="text-white text-xs">Camera Off</p>
+                            </div>
+                          )}
+                          {/* 사용자 이름 라벨 */}
+                          <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white px-1 py-0.5 rounded text-xs">
+                            {totalUsers > 6
+                              ? myNickname.slice(0, 4)
+                              : myNickname}{" "}
+                            (나)
+                          </div>
+                          {/* 상태 표시 */}
+                          <div className="absolute top-1 right-1 flex space-x-1">
+                            {isMuted && (
+                              <div className="bg-red-500 text-white p-0.5 rounded text-xs">
+                                🔇
+                              </div>
+                            )}
+                            {isCameraOff && (
+                              <div className="bg-red-500 text-white p-0.5 rounded text-xs">
+                                📷
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                )}
 
-                {/* 빈 슬롯들 (4개 그리드를 유지하기 위해) */}
-                {Array.from({
-                  length: Math.max(0, 4 - (connectedUsers.size + 1)),
-                }).map((_, index) => (
-                  <div key={`empty-${index}`} className="relative">
-                    <div className="w-full h-24 bg-gray-700 rounded-lg border border-gray-500 flex items-center justify-center">
-                      <span className="text-gray-400 text-xs">대기중</span>
+                      {/* 원격 사용자들 */}
+                      {Array.from(connectedUsers.entries()).map(
+                        ([userId, userInfo]) => (
+                          <div key={userId} className="relative flex-shrink-0">
+                            <div className="relative group">
+                              <video
+                                ref={(el) => {
+                                  if (el) {
+                                    remoteVideoRefs.current.set(userId, el);
+                                    const stream =
+                                      remoteStreams.current.get(userId);
+                                    if (stream) {
+                                      el.srcObject = stream;
+                                      console.log(
+                                        "Remote stream reconnected for:",
+                                        userId
+                                      );
+                                    }
+                                  } else {
+                                    // 엘리먼트가 언마운트될 때 ref에서 제거
+                                    remoteVideoRefs.current.delete(userId);
+                                  }
+                                }}
+                                autoPlay
+                                playsInline
+                                className={`${config.videoWidth} ${config.videoHeight} object-cover rounded-lg border border-gray-300 bg-gray-800`}
+                                style={{ transform: "scaleX(-1)" }}
+                              />
+                              {/* 사용자 이름 라벨 */}
+                              <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white px-1 py-0.5 rounded text-xs">
+                                {totalUsers > 6
+                                  ? userInfo.nickname.slice(0, 4)
+                                  : userInfo.nickname}
+                              </div>
+                              {/* 연결 상태 */}
+                              <div className="absolute top-1 right-1">
+                                <div className="bg-green-500 text-white p-0.5 rounded text-xs">
+                                  ●
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })()}
 
             {/* 연결 상태 디버그 정보 */}
             <div className="text-xs text-gray-400 text-center">
