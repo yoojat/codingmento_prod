@@ -1,21 +1,19 @@
-// server.js
-import path from "path";
-import express from "express";
-import { createServer } from "http";
+import http from "http";
 import { Server as SocketIOServer } from "socket.io";
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// 1) React Router 빌드 산출물이 위치한 디렉터리
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const BUILD_DIR = path.resolve("./build");
-
-// 2) Express 앱 초기화
 const app = express();
 
-// 3) 정적 자원 서빙
 app.use(express.static(path.join(BUILD_DIR, "public"), { maxAge: "1h" }));
 app.use(express.static(path.join(BUILD_DIR, "client"), { maxAge: "1h" }));
 
-// 4) HTTP + Socket.IO 서버 래핑
-const httpServer = createServer(app);
+const httpServer = http.createServer(app);
 const wsServer = new SocketIOServer(httpServer, {
   cors: {
     origin: [
@@ -27,6 +25,7 @@ const wsServer = new SocketIOServer(httpServer, {
   },
 });
 
+// 방별 사용자 관리
 const rooms = new Map(); // roomName -> Map<userId, {socketId, nickname, joinedAt}>
 
 // userId로 소켓 찾기
@@ -53,15 +52,14 @@ wsServer.on("connection", (socket) => {
     // 방 참가
     socket.join(roomName);
 
-    // 방 초기화, 없으면 만들어줌
+    // 방 초기화
     if (!rooms.has(roomName)) {
       rooms.set(roomName, new Map());
     }
 
-    // 방에 있는 사용자 목록 가져오기
     const roomUsers = rooms.get(roomName);
 
-    // 방에 있는 사용자 목록을 배열로 변환
+    // 기존 사용자 목록을 새 사용자에게 전송
     const existingUsers = Array.from(roomUsers.values()).map((user) => ({
       id: user.userId,
       nickname: user.nickname,
@@ -73,38 +71,41 @@ wsServer.on("connection", (socket) => {
     // 기존 사용자들에게 새 사용자 입장 알림
     socket.to(roomName).emit("user_joined", {
       id: userId,
-      nickname,
+      nickname: nickname,
     });
 
     // 새 사용자를 방에 추가
     roomUsers.set(userId, {
       socketId: socket.id,
-      userId,
-      nickname,
+      userId: userId,
+      nickname: nickname,
       joinedAt: new Date(),
     });
 
-    // 방에 있는 사용자 목록을 배열로 변환
+    console.log(`📤 Room ${roomName} now has ${roomUsers.size} users`);
   });
 
+  // 1:1 시그널링 - Offer
   socket.on("offer", (offer, fromUserId, toUserId) => {
     console.log(`📥 Offer from ${fromUserId} to ${toUserId}`);
-    const targetocket = findSocketByUserId(toUserId);
+    const targetSocket = findSocketByUserId(toUserId);
     if (targetSocket) {
       targetSocket.emit("offer", offer, fromUserId, toUserId);
-      console.log(`📤 Offer sent to ${toUserId}`);
+      console.log(`📤 Offer forwarded to ${toUserId}`);
     }
   });
 
+  // 1:1 시그널링 - Answer
   socket.on("answer", (answer, fromUserId, toUserId) => {
     console.log(`📥 Answer from ${fromUserId} to ${toUserId}`);
     const targetSocket = findSocketByUserId(toUserId);
     if (targetSocket) {
       targetSocket.emit("answer", answer, fromUserId, toUserId);
-      console.log(`📤 Answer sent to ${toUserId}`);
+      console.log(`📤 Answer forwarded to ${toUserId}`);
     }
   });
 
+  // 1:1 시그널링 - ICE Candidate
   socket.on("ice", (candidate, fromUserId, toUserId) => {
     console.log(`📥 ICE candidate from ${fromUserId} to ${toUserId}`);
     const targetSocket = findSocketByUserId(toUserId);
@@ -113,29 +114,38 @@ wsServer.on("connection", (socket) => {
     }
   });
 
+  // 데이터 채널 메시지
+  socket.on("data_message", (message, fromUserId, toUserId) => {
+    const targetSocket = findSocketByUserId(toUserId);
+    if (targetSocket) {
+      targetSocket.emit("data_message", message, fromUserId);
+    }
+  });
+
+  // 연결 해제 처리
   socket.on("disconnect", () => {
     console.log("🔴 Socket.IO 클라이언트 해제:", socket.id);
+
+    if (socket.currentRoom && socket.userId) {
+      const roomUsers = rooms.get(socket.currentRoom);
+      if (roomUsers) {
+        roomUsers.delete(socket.userId);
+
+        // 방에 남은 사용자들에게 퇴장 알림
+        socket.to(socket.currentRoom).emit("user_left", socket.userId);
+
+        console.log(`📤 User ${socket.userId} left room ${socket.currentRoom}`);
+
+        // 방이 비었으면 삭제
+        if (roomUsers.size === 0) {
+          rooms.delete(socket.currentRoom);
+          console.log(`🗑️  Empty room ${socket.currentRoom} deleted`);
+        }
+      }
+    }
   });
 });
 
-if (process.env.NODE_ENV === "production") {
-  const { createRequestHandler } = await import("@react-router/express");
-  const BUILD_DIR = path.resolve("./build");
-  const serverBuild = await import("./build/server/index.js");
-
-  app.use(express.static(path.join(BUILD_DIR, "client"), { maxAge: "1h" }));
-  app.all(
-    /.*/, // 슬래시 포함 모든 경로
-    createRequestHandler({
-      build: serverBuild,
-      mode: process.env.NODE_ENV || "development",
-    })
-  );
-}
-
-// 5) 문자열 패턴 대신 정규식으로
-
-// 6) 서버 시작
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`🚀 서버 실행 중 → http://localhost:${PORT}`);
