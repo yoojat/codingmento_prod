@@ -89,7 +89,7 @@ wsServer.on("connection", (socket) => {
 
   socket.on("offer", (offer, fromUserId, toUserId) => {
     console.log(`📥 Offer from ${fromUserId} to ${toUserId}`);
-    const targetocket = findSocketByUserId(toUserId);
+    const targetSocket = findSocketByUserId(toUserId);
     if (targetSocket) {
       targetSocket.emit("offer", offer, fromUserId, toUserId);
       console.log(`📤 Offer sent to ${toUserId}`);
@@ -115,6 +115,22 @@ wsServer.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("🔴 Socket.IO 클라이언트 해제:", socket.id);
+    if (socket.userId) {
+      const roomUsers = rooms.get(socket.currentRoom);
+      if (roomUsers) {
+        roomUsers.delete(socket.userId);
+        socket.to(socket.currentRoom).emit("user_left", socket.userId);
+      }
+    }
+  });
+
+  socket.on("user_left", (userId) => {
+    console.log("🔴 User left:", userId);
+    const roomUsers = rooms.get(socket.currentRoom);
+    if (roomUsers) {
+      roomUsers.delete(userId);
+      socket.to(socket.currentRoom).emit("user_left", userId);
+    }
   });
 });
 

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
 import { useSocket } from "../../../hooks/use-socket";
 import { Input } from "~/common/components/ui/input";
 import { Button } from "~/common/components/ui/button";
@@ -22,48 +21,50 @@ interface User {
   joinedAt?: Date;
 }
 
+interface UserState {
+  nickname: string;
+  isVideoOn: boolean;
+  isAudioOn: boolean;
+}
+
 // 고유 사용자 ID 생성
 const generateUserId = () =>
   `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export default function Lesson() {
   const socket = useSocket();
-  const navigate = useNavigate();
-  // UI State
+
+  // 기본 상태
   const [isWelcomeHidden, setIsWelcomeHidden] = useState(false);
   const [inputRoomName, setInputRoomName] = useState("");
   const [inputNickname, setInputNickname] = useState("");
   const [roomName, setRoomName] = useState("");
-  const roomNameRef = useRef<string>("");
   const [myUserId] = useState(generateUserId());
   const [myNickname, setMyNickname] = useState("");
 
-  // MediaState
-  const [cameras, setCameras] = useState<Camera[]>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+  // 미디어 상태
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
+  const [cameras, setCameras] = useState<Camera[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+
+  // 다중 사용자 관리
+  const [connectedUsers, setConnectedUsers] = useState<Map<string, UserState>>(
+    new Map()
+  ); // userId => {name, isVideoOn, isAudioOn}
 
   // Refs
   const myFaceRef = useRef<HTMLVideoElement>(null);
-  const peerFaceRef = useRef<HTMLVideoElement>(null);
   const myStreamRef = useRef<MediaStream | null>(null);
-  const myPeerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const myDataChannelRef = useRef<RTCDataChannel | null>(null);
+  const roomNameRef = useRef<string>("");
 
   // 다중 연결 관리
-  const [connectedUsers, setConnectedUsers] = useState(new Map());
-  // userId => {name, isVideoOn, isAudioOn}
-
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
   // userId -> RTCPeerConnection
-
   const dataChannels = useRef<Map<string, RTCDataChannel>>(new Map());
   // userId -> RTCDataChannel
-
   const remoteVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   // userId -> HTMLVideoElement ref
-
   const remoteStreams = useRef<Map<string, MediaStream>>(new Map());
   // userId -> MediaStream
 
@@ -233,137 +234,6 @@ export default function Lesson() {
     [socket, myUserId, setupDataChannel]
   );
 
-  // Handle mute toggle
-  const handleMuteClick = useCallback(() => {
-    if (myStreamRef.current) {
-      myStreamRef.current
-        .getAudioTracks()
-        .forEach((track) => (track.enabled = !track.enabled));
-      setIsMuted(!isMuted);
-    }
-  }, [isMuted]);
-
-  // Handle camera toggle
-  const handleCameraClick = useCallback(() => {
-    if (myStreamRef.current) {
-      myStreamRef.current
-        .getVideoTracks()
-        .forEach((track) => (track.enabled = !track.enabled));
-      setIsCameraOff(!isCameraOff);
-    }
-  }, [isCameraOff]);
-
-  // Handle camera change
-  const handleCameraChange = useCallback(
-    async (deviceId: string) => {
-      try {
-        await getMedia(deviceId);
-        setSelectedCameraId(deviceId);
-
-        if (myPeerConnectionRef.current && myStreamRef.current) {
-          const videoTrack = myStreamRef.current.getVideoTracks()[0];
-          const videoSender = myPeerConnectionRef.current
-            .getSenders()
-            .find((sender) => sender.track?.kind === "video");
-
-          if (videoSender && videoTrack) {
-            await videoSender.replaceTrack(videoTrack);
-          }
-        }
-      } catch (error) {
-        console.error("Error changing camera:", error);
-      }
-    },
-    [getMedia]
-  );
-  // Create peer connection
-  const makeConnection = useCallback(
-    (newRoomName: string) => {
-      console.log("Creating peer connection");
-      const peerConnection = new RTCPeerConnection({
-        iceServers: [
-          {
-            urls: [
-              "stun:stun.l.google.com:19302",
-              "stun:stun1.l.google.com:19302",
-              "stun:stun2.l.google.com:19302",
-              "stun:stun3.l.google.com:19302",
-              "stun:stun4.l.google.com:19302",
-            ],
-          },
-        ],
-      });
-
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          console.log("Sending ICE candidate");
-          socket?.emit("ice", event.candidate, newRoomName);
-        }
-      };
-
-      // 원격 스트림 수신
-      peerConnection.ontrack = (event) => {
-        console.log(`Received stream from ${userId}`);
-        const stream = event.streams[0];
-        remoteStreams.current.set(userId, stream);
-
-        const videoElement = remoteVideoRefs.current.get(userId);
-        if (videoElement) {
-          videoElement.srcObject = stream;
-        }
-      };
-
-      // Add local stream to peer connection
-      if (myStreamRef.current) {
-        myStreamRef.current.getTracks().forEach((track) => {
-          peerConnection.addTrack(track, myStreamRef.current!);
-        });
-      }
-
-      myPeerConnectionRef.current = peerConnection;
-      return peerConnection;
-    },
-    [socket, roomName]
-  );
-
-  // Initialize call
-  const initCall = useCallback(
-    async (newRoomName: string) => {
-      setIsWelcomeHidden(true);
-      await getMedia();
-    },
-    [getMedia]
-  );
-
-  const handleWelcomeSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-
-      if (!inputRoomName.trim() || !inputNickname.trim() || !socket) return;
-
-      const newRoomName = inputRoomName.trim();
-      const nickname = inputNickname.trim();
-
-      setRoomName(newRoomName);
-      setMyNickname(nickname);
-
-      roomNameRef.current = newRoomName; // ref도 업데이트
-
-      await initCall(newRoomName);
-
-      console.log(`📤 Joining room: ${newRoomName} as ${nickname}`);
-      socket.emit("join_room", {
-        roomName: newRoomName,
-        userId: myUserId,
-        nickname: nickname,
-      });
-
-      setInputNickname("");
-      setInputRoomName("");
-    },
-    [inputNickname, inputRoomName, socket, myUserId]
-  );
-
   // 피어 연결 정리
   const closePeerConnection = useCallback((userId: string) => {
     console.log(`Closing peer connection with ${userId}`);
@@ -401,13 +271,41 @@ export default function Lesson() {
     }
   }, [closePeerConnection]);
 
-  // 그리드 클래스 계산
-  const getGridClass = (userCount: number) => {
-    if (userCount <= 2) return "grid-cols-1 md:grid-cols-2";
-    if (userCount <= 4) return "grid-cols-2 md:grid-cols-2";
-    if (userCount <= 9) return "grid-cols-2 md:grid-cols-3";
-    return "grid-cols-3 md:grid-cols-4";
-  };
+  // Initialize call
+  const initCall = useCallback(
+    async (newRoomName: string) => {
+      setIsWelcomeHidden(true);
+      await getMedia();
+    },
+    [getMedia]
+  );
+
+  const handleWelcomeSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!inputRoomName.trim() || !inputNickname.trim() || !socket) return;
+
+      const newRoomName = inputRoomName.trim();
+      const nickname = inputNickname.trim();
+
+      setRoomName(newRoomName);
+      setMyNickname(nickname);
+      roomNameRef.current = newRoomName; // ref도 업데이트
+
+      await initCall(newRoomName);
+
+      console.log(`📤 Joining room: ${newRoomName} as ${nickname}`);
+      socket.emit("join_room", {
+        roomName: newRoomName,
+        userId: myUserId,
+        nickname: nickname,
+      });
+
+      setInputNickname("");
+      setInputRoomName("");
+    },
+    [inputNickname, inputRoomName, socket, myUserId, initCall]
+  );
 
   //Socket event handlers
   useEffect(() => {
@@ -460,16 +358,21 @@ export default function Lesson() {
 
         // Create peer connection and add to peerConnections map
         await createPeerConnection(newUser.id, false);
+        // Add to connected users map
+        setConnectedUsers((prev) =>
+          new Map(prev).set(newUser.id, {
+            nickname: newUser.nickname,
+            isVideoOn: true,
+            isAudioOn: true,
+          })
+        );
       }
+    });
 
-      // Add to connected users map
-      setConnectedUsers((prev) =>
-        new Map(prev).set(newUser.id, {
-          nickname: newUser.nickname,
-          isVideoOn: true,
-          isAudioOn: true,
-        })
-      );
+    // 사용자 퇴장
+    socket.on("user_left", (userId: string) => {
+      console.log("📥 User left:", userId);
+      closePeerConnection(userId);
     });
 
     socket.on(
@@ -545,23 +448,75 @@ export default function Lesson() {
       socket.off("disconnect");
       socket.off("room_users");
       socket.off("user_joined");
+      socket.off("user_left");
       socket.off("offer");
       socket.off("answer");
       socket.off("ice");
     };
-  }, [socket, myUserId, createPeerConnection]);
+  }, [socket, myUserId, createPeerConnection, closePeerConnection]);
 
-  // Cleanup on unmount
+  // 미디어 컨트롤
+  const handleMuteClick = useCallback(() => {
+    if (myStreamRef.current) {
+      myStreamRef.current
+        .getAudioTracks()
+        .forEach((track) => (track.enabled = !track.enabled));
+      setIsMuted(!isMuted);
+    }
+  }, [isMuted]);
+
+  const handleCameraClick = useCallback(() => {
+    if (myStreamRef.current) {
+      myStreamRef.current
+        .getVideoTracks()
+        .forEach((track) => (track.enabled = !track.enabled));
+      setIsCameraOff(!isCameraOff);
+    }
+  }, [isCameraOff]);
+
+  const handleCameraChange = useCallback(
+    async (deviceId: string) => {
+      try {
+        await getMedia(deviceId);
+        setSelectedCameraId(deviceId);
+
+        // 모든 피어 연결의 비디오 트랙 교체
+        if (myStreamRef.current) {
+          const videoTrack = myStreamRef.current.getVideoTracks()[0];
+          for (const pc of peerConnections.current.values()) {
+            const videoSender = pc
+              .getSenders()
+              .find((sender) => sender.track?.kind === "video");
+            if (videoSender && videoTrack) {
+              await videoSender.replaceTrack(videoTrack);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error changing camera:", error);
+      }
+    },
+    [getMedia]
+  );
+
+  // 그리드 클래스 계산
+  const getGridClass = (userCount: number) => {
+    if (userCount <= 2) return "grid-cols-1 md:grid-cols-2";
+    if (userCount <= 4) return "grid-cols-2 md:grid-cols-2";
+    if (userCount <= 9) return "grid-cols-2 md:grid-cols-3";
+    return "grid-cols-3 md:grid-cols-4";
+  };
+
+  // 정리
   useEffect(() => {
     return () => {
       if (myStreamRef.current) {
         myStreamRef.current.getTracks().forEach((track) => track.stop());
       }
-      if (myPeerConnectionRef.current) {
-        myPeerConnectionRef.current.close();
-      }
+      cleanupAllConnections();
     };
-  }, []);
+  }, [cleanupAllConnections]);
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {!isWelcomeHidden && (
@@ -674,6 +629,64 @@ export default function Lesson() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* 컨트롤 */}
+          <div className="flex flex-wrap gap-2 justify-center">
+            <Button
+              onClick={handleMuteClick}
+              variant={isMuted ? "destructive" : "default"}
+              size="sm"
+            >
+              {isMuted ? "음소거 해제" : "음소거"}
+            </Button>
+
+            <Button
+              onClick={handleCameraClick}
+              variant={isCameraOff ? "destructive" : "default"}
+              size="sm"
+            >
+              {isCameraOff ? "카메라 켜기" : "카메라 끄기"}
+            </Button>
+
+            {cameras.length > 0 && (
+              <Select
+                value={selectedCameraId}
+                onValueChange={handleCameraChange}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="카메라 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cameras.map((camera) => (
+                    <SelectItem key={camera.deviceId} value={camera.deviceId}>
+                      {camera.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <Button
+              onClick={() => {
+                cleanupAllConnections();
+                setIsWelcomeHidden(false);
+                setConnectedUsers(new Map());
+                socket?.emit("user_left", myUserId);
+                setIsCameraOff(false);
+                setIsMuted(false);
+              }}
+              variant="outline"
+              size="sm"
+            >
+              방 나가기
+            </Button>
+          </div>
+
+          {/* 연결 상태 디버그 정보 */}
+          <div className="text-xs text-gray-500 text-center">
+            활성 연결: {peerConnections.current.size}개 | 데이터 채널:{" "}
+            {dataChannels.current.size}개
           </div>
         </div>
       )}
