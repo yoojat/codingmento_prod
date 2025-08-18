@@ -47,6 +47,7 @@ export default function Lesson() {
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+  const [isVideoAreaVisible, setIsVideoAreaVisible] = useState(true);
 
   // 다중 사용자 관리
   const [connectedUsers, setConnectedUsers] = useState<Map<string, UserState>>(
@@ -499,12 +500,9 @@ export default function Lesson() {
     [getMedia]
   );
 
-  // 그리드 클래스 계산
-  const getGridClass = (userCount: number) => {
-    if (userCount <= 2) return "grid-cols-1 md:grid-cols-2";
-    if (userCount <= 4) return "grid-cols-2 md:grid-cols-2";
-    if (userCount <= 9) return "grid-cols-2 md:grid-cols-3";
-    return "grid-cols-3 md:grid-cols-4";
+  // 하단 비디오 스트립을 위한 그리드 클래스 계산 (항상 4개씩)
+  const getBottomVideoGridClass = () => {
+    return "grid-cols-4 gap-2";
   };
 
   // 정리
@@ -550,8 +548,9 @@ export default function Lesson() {
         </div>
       )}
       {isWelcomeHidden && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
+        <div className="h-screen flex flex-col relative">
+          {/* 상단 헤더 */}
+          <div className="flex justify-between items-center p-4 bg-white border-b">
             <h2 className="text-2xl font-bold">
               방: {roomName} ({connectedUsers.size + 1}명)
             </h2>
@@ -560,133 +559,180 @@ export default function Lesson() {
             </div>
           </div>
 
-          {/* 비디오 그리드 */}
-          <div
-            className={`grid gap-4 ${getGridClass(connectedUsers.size + 1)}`}
-          >
-            {/* 내 비디오 */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-center">
-                {myNickname} (나)
-              </h3>
-              <div className="relative">
-                <video
-                  ref={myFaceRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full aspect-video rounded-lg border border-gray-200 bg-gray-100"
-                  style={{ transform: "scaleX(-1)" }}
-                />
-                {isCameraOff && (
-                  <div className="absolute inset-0 bg-black rounded-lg flex items-center justify-center">
-                    <p className="text-white text-sm">Camera Off</p>
-                  </div>
-                )}
-                <div className="absolute bottom-2 left-2 flex space-x-1">
-                  {isMuted && (
-                    <div className="bg-red-500 text-white px-2 py-1 rounded text-xs">
-                      음소거
-                    </div>
-                  )}
-                  {isCameraOff && (
-                    <div className="bg-red-500 text-white px-2 py-1 rounded text-xs">
-                      비디오 꺼짐
-                    </div>
-                  )}
-                </div>
+          {/* 메인 콘텐츠 영역 - 여기에 다른 콘텐츠를 추가할 수 있습니다 */}
+          <div className="flex-1 bg-gray-50 p-4">
+            <div className="h-full flex items-center justify-center">
+              <div className="text-gray-500 text-lg">
+                화상 통화 진행 중...
+                <br />
+                <span className="text-sm">
+                  하단에서 카메라 화면을 확인하세요
+                </span>
               </div>
             </div>
+          </div>
 
-            {/* 원격 사용자들 */}
-            {Array.from(connectedUsers.entries()).map(([userId, userInfo]) => (
-              <div key={userId} className="space-y-2">
-                <h3 className="text-sm font-semibold text-center">
-                  {userInfo.nickname}
-                </h3>
+          {/* 하단 컨트롤 및 비디오 영역 - 고정 위치 */}
+          <div className="fixed bottom-0 left-0 right-0 bg-black bg-opacity-90 p-3 space-y-3">
+            {/* 컨트롤 버튼들 */}
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button
+                onClick={handleMuteClick}
+                variant={isMuted ? "destructive" : "default"}
+                size="sm"
+                className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+              >
+                {isMuted ? "🔇 음소거 해제" : "🎤 음소거"}
+              </Button>
+
+              <Button
+                onClick={handleCameraClick}
+                variant={isCameraOff ? "destructive" : "default"}
+                size="sm"
+                className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+              >
+                {isCameraOff ? "📷 카메라 켜기" : "📹 카메라 끄기"}
+              </Button>
+
+              <Button
+                onClick={() => setIsVideoAreaVisible(!isVideoAreaVisible)}
+                variant="default"
+                size="sm"
+                className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+              >
+                {isVideoAreaVisible ? "📺 비디오 숨기기" : "📺 비디오 보기"}
+              </Button>
+
+              {cameras.length > 0 && (
+                <Select
+                  value={selectedCameraId}
+                  onValueChange={handleCameraChange}
+                >
+                  <SelectTrigger className="w-48 bg-gray-700 text-white border-gray-600">
+                    <SelectValue placeholder="카메라 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cameras.map((camera) => (
+                      <SelectItem key={camera.deviceId} value={camera.deviceId}>
+                        {camera.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              <Button
+                onClick={() => {
+                  cleanupAllConnections();
+                  setIsWelcomeHidden(false);
+                  setConnectedUsers(new Map());
+                  socket?.emit("user_left", myUserId);
+                  setIsCameraOff(false);
+                  setIsMuted(false);
+                }}
+                variant="outline"
+                size="sm"
+                className="bg-red-600 hover:bg-red-500 text-white border-red-500"
+              >
+                📞 방 나가기
+              </Button>
+            </div>
+
+            {/* 비디오 스트립 - 조건부 렌더링 */}
+            {isVideoAreaVisible && (
+              <div
+                className={`grid ${getBottomVideoGridClass()} max-w-6xl mx-auto`}
+              >
+                {/* 내 비디오 */}
                 <div className="relative">
-                  <video
-                    ref={(el) => {
-                      if (el) {
-                        remoteVideoRefs.current.set(userId, el);
-                        const stream = remoteStreams.current.get(userId);
-                        if (stream) {
-                          el.srcObject = stream;
-                          console.log("stream", stream);
-                        }
-                      }
-                    }}
-                    autoPlay
-                    playsInline
-                    className="w-full aspect-video rounded-lg border border-gray-200 bg-gray-100"
-                    style={{ transform: "scaleX(-1)" }}
-                  />
-                  <div className="absolute bottom-2 left-2">
-                    <div className="bg-blue-500 text-white px-2 py-1 rounded text-xs">
-                      연결됨
+                  <div className="relative group">
+                    <video
+                      ref={myFaceRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-24 object-cover rounded-lg border border-gray-300 bg-gray-800"
+                      style={{ transform: "scaleX(-1)" }}
+                    />
+                    {isCameraOff && (
+                      <div className="absolute inset-0 bg-black rounded-lg flex items-center justify-center">
+                        <p className="text-white text-xs">Camera Off</p>
+                      </div>
+                    )}
+                    {/* 사용자 이름 라벨 */}
+                    <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white px-2 py-0.5 rounded text-xs">
+                      {myNickname} (나)
+                    </div>
+                    {/* 상태 표시 */}
+                    <div className="absolute top-1 right-1 flex space-x-1">
+                      {isMuted && (
+                        <div className="bg-red-500 text-white p-1 rounded text-xs">
+                          🔇
+                        </div>
+                      )}
+                      {isCameraOff && (
+                        <div className="bg-red-500 text-white p-1 rounded text-xs">
+                          📷
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
+
+                {/* 원격 사용자들 */}
+                {Array.from(connectedUsers.entries()).map(
+                  ([userId, userInfo]) => (
+                    <div key={userId} className="relative">
+                      <div className="relative group">
+                        <video
+                          ref={(el) => {
+                            if (el) {
+                              remoteVideoRefs.current.set(userId, el);
+                              const stream = remoteStreams.current.get(userId);
+                              if (stream) {
+                                el.srcObject = stream;
+                                console.log("stream", stream);
+                              }
+                            }
+                          }}
+                          autoPlay
+                          playsInline
+                          className="w-full h-24 object-cover rounded-lg border border-gray-300 bg-gray-800"
+                          style={{ transform: "scaleX(-1)" }}
+                        />
+                        {/* 사용자 이름 라벨 */}
+                        <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white px-2 py-0.5 rounded text-xs">
+                          {userInfo.nickname}
+                        </div>
+                        {/* 연결 상태 */}
+                        <div className="absolute top-1 right-1">
+                          <div className="bg-green-500 text-white p-1 rounded text-xs">
+                            ●
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {/* 빈 슬롯들 (4개 그리드를 유지하기 위해) */}
+                {Array.from({
+                  length: Math.max(0, 4 - (connectedUsers.size + 1)),
+                }).map((_, index) => (
+                  <div key={`empty-${index}`} className="relative">
+                    <div className="w-full h-24 bg-gray-700 rounded-lg border border-gray-500 flex items-center justify-center">
+                      <span className="text-gray-400 text-xs">대기중</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-
-          {/* 컨트롤 */}
-          <div className="flex flex-wrap gap-2 justify-center">
-            <Button
-              onClick={handleMuteClick}
-              variant={isMuted ? "destructive" : "default"}
-              size="sm"
-            >
-              {isMuted ? "음소거 해제" : "음소거"}
-            </Button>
-
-            <Button
-              onClick={handleCameraClick}
-              variant={isCameraOff ? "destructive" : "default"}
-              size="sm"
-            >
-              {isCameraOff ? "카메라 켜기" : "카메라 끄기"}
-            </Button>
-
-            {cameras.length > 0 && (
-              <Select
-                value={selectedCameraId}
-                onValueChange={handleCameraChange}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="카메라 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cameras.map((camera) => (
-                    <SelectItem key={camera.deviceId} value={camera.deviceId}>
-                      {camera.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             )}
 
-            <Button
-              onClick={() => {
-                cleanupAllConnections();
-                setIsWelcomeHidden(false);
-                setConnectedUsers(new Map());
-                socket?.emit("user_left", myUserId);
-                setIsCameraOff(false);
-                setIsMuted(false);
-              }}
-              variant="outline"
-              size="sm"
-            >
-              방 나가기
-            </Button>
-          </div>
-
-          {/* 연결 상태 디버그 정보 */}
-          <div className="text-xs text-gray-500 text-center">
-            활성 연결: {peerConnections.current.size}개 | 데이터 채널:{" "}
-            {dataChannels.current.size}개
+            {/* 연결 상태 디버그 정보 */}
+            <div className="text-xs text-gray-400 text-center">
+              활성 연결: {peerConnections.current.size}개 | 데이터 채널:{" "}
+              {dataChannels.current.size}개
+            </div>
           </div>
         </div>
       )}
