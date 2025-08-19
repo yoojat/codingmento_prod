@@ -14,6 +14,7 @@ export function useSkulptRunner() {
   const [output, setOutput] = useState<string>("");
 
   const run = (code: string) => {
+    // 안전성 체크
     if (!loaded) {
       alert("Skulpt가 아직 로딩 중입니다.");
       return;
@@ -21,6 +22,10 @@ export function useSkulptRunner() {
     if (error) {
       console.error(error);
       alert("Skulpt 로딩 에러: " + error.message);
+      return;
+    }
+    if (!canvasRef.current) {
+      console.warn("Canvas 참조가 없습니다.");
       return;
     }
 
@@ -43,48 +48,82 @@ export function useSkulptRunner() {
       return window.Sk.builtinFiles["files"][x];
     };
 
-    // 4) Skulpt 설정
-    window.Sk.pre = "skulpt-output";
-    window.Sk.configure({ output: outf, read: builtinRead });
+    try {
+      // 4) Skulpt 설정
+      window.Sk.pre = "skulpt-output";
+      window.Sk.configure({ output: outf, read: builtinRead });
 
-    // 5) Turtle 그래픽 타겟 지정
-    if (!window.Sk.TurtleGraphics) {
-      window.Sk.TurtleGraphics = {};
-    }
-    // 1) 컨테이너 clear
-    canvasRef.current!.innerHTML = "";
+      // 5) Turtle 그래픽 설정 (개선된 버전)
+      if (!window.Sk.TurtleGraphics) {
+        window.Sk.TurtleGraphics = {};
+      }
 
-    // 2) 컨테이너 실제 픽셀 너비 측정
-    const containerWidth = canvasRef.current!.clientWidth;
-    // 원하는 종횡비(aspect ratio)가 4:3 이라면:
-    const containerHeight = Math.floor((containerWidth * 3) / 4);
+      // Canvas 컨테이너 완전 초기화
+      canvasRef.current.innerHTML = "";
 
-    // 3) Skulpt 해상도 동적 할당
-    window.Sk.TurtleGraphics.width = containerWidth;
-    window.Sk.TurtleGraphics.height = containerHeight;
-    window.Sk.TurtleGraphics.target = canvasRef.current!.id || "";
-    // 추가로 canvas를 **재활용** 한다는 표시를 해줄 수도 있습니다:
-    // 6) 코드 실행
-    window.Sk.misceval
-      .asyncToPromise(() =>
-        window.Sk.importMainWithBody("<stdin>", false, code, true)
-      )
-      .catch((err: any) => {
-        outf("\n" + err.toString());
+      // 고유한 canvas ID 생성 (중복 방지)
+      const canvasId = `turtle-canvas-${Date.now()}`;
+      canvasRef.current.id = canvasId;
+
+      // 컨테이너 크기 측정
+      const containerWidth = canvasRef.current.clientWidth || 600; // 기본값 설정
+      const containerHeight = Math.floor((containerWidth * 3) / 4) || 450;
+
+      // Skulpt TurtleGraphics 설정
+      window.Sk.TurtleGraphics.target = canvasId;
+      window.Sk.TurtleGraphics.width = containerWidth;
+      window.Sk.TurtleGraphics.height = containerHeight;
+
+      console.log("Turtle Graphics 설정:", {
+        target: canvasId,
+        width: containerWidth,
+        height: containerHeight,
       });
+
+      // 6) 코드 실행
+      window.Sk.misceval
+        .asyncToPromise(() =>
+          window.Sk.importMainWithBody("<stdin>", false, code, true)
+        )
+        .then(() => {
+          console.log("Python 코드 실행 완료");
+        })
+        .catch((err: any) => {
+          console.error("Python 실행 오류:", err);
+          outf("\n" + err.toString());
+        });
+    } catch (error) {
+      console.error("Skulpt 설정 중 오류:", error);
+      setOutput("실행 중 오류가 발생했습니다: " + error);
+    }
   };
 
   useEffect(() => {
     if (!canvasRef.current) return;
     const ro = new ResizeObserver(() => {
+      // 안전성 체크
+      if (
+        !canvasRef.current ||
+        !window.Sk ||
+        !window.Sk.TurtleGraphics ||
+        !loaded
+      ) {
+        return;
+      }
+
       // 같은 로직으로 Skulpt 해상도 업데이트
-      const w = canvasRef.current!.clientWidth;
+      const w = canvasRef.current.clientWidth;
       window.Sk.TurtleGraphics.width = w;
       window.Sk.TurtleGraphics.height = Math.floor((w * 3) / 4);
+
+      console.log("ResizeObserver: Turtle Graphics 크기 업데이트", {
+        width: w,
+        height: Math.floor((w * 3) / 4),
+      });
     });
     ro.observe(canvasRef.current);
     return () => ro.disconnect();
-  }, [canvasRef]);
+  }, [canvasRef, loaded]);
 
   return { loaded, error, output, run, canvasRef };
 }

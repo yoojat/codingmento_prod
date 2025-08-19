@@ -2,14 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "../../../hooks/use-socket";
 import { Input } from "~/common/components/ui/input";
 import { Button } from "~/common/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/common/components/ui/select";
+
 import Chat from "../components/chat";
+import VideoControls from "../components/video-controls";
 
 interface Camera {
   deviceId: string;
@@ -43,12 +38,7 @@ export default function Lesson() {
   const [myUserId] = useState(generateUserId());
   const [myNickname, setMyNickname] = useState("");
 
-  // 미디어 상태
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
-  const [cameras, setCameras] = useState<Camera[]>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
-  const [isVideoAreaVisible, setIsVideoAreaVisible] = useState(true);
+  // 미디어 상태 (VideoControls로 내부화)
   const [chatMessages, setChatMessages] = useState<
     Array<{
       id: string;
@@ -78,71 +68,6 @@ export default function Lesson() {
   // userId -> HTMLVideoElement ref
   const remoteStreams = useRef<Map<string, MediaStream>>(new Map());
   // userId -> MediaStream
-
-  // Get available cameras
-  const getCameras = useCallback(async () => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(
-        (device) => device.kind === "videoinput"
-      );
-      const cameraList: Camera[] = videoDevices.map((device) => ({
-        deviceId: device.deviceId,
-        label: device.label || `Camera ${device.deviceId.slice(0, 8)}`,
-      }));
-
-      setCameras(cameraList);
-
-      if (myStreamRef.current && cameraList.length > 0) {
-        const currentCamera = myStreamRef.current.getVideoTracks()[0];
-        const currentCameraDevice = cameraList.find(
-          (camera) => camera.label === currentCamera.label
-        );
-        if (currentCameraDevice) {
-          setSelectedCameraId(currentCameraDevice.deviceId);
-        }
-      }
-    } catch (error) {
-      console.error("Error getting cameras:", error);
-    }
-  }, []);
-
-  // Get media stream
-  const getMedia = useCallback(
-    async (deviceId?: string) => {
-      const initialConstraints = {
-        audio: true,
-        video: { facingMode: "user" },
-      };
-
-      const cameraConstraints = {
-        audio: true,
-        video: { deviceId: { exact: deviceId } },
-      };
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(
-          deviceId ? cameraConstraints : initialConstraints
-        );
-
-        myStreamRef.current = stream;
-
-        if (myFaceRef.current) {
-          myFaceRef.current.srcObject = stream;
-        }
-
-        if (!deviceId) {
-          await getCameras();
-        }
-
-        return stream;
-      } catch (error) {
-        console.error("Error getting media:", error);
-        throw error;
-      }
-    },
-    [getCameras]
-  );
 
   // 데이터 채널 설정
   const setupDataChannel = useCallback(
@@ -292,14 +217,11 @@ export default function Lesson() {
     }
   }, [closePeerConnection]);
 
-  // Initialize call
-  const initCall = useCallback(
-    async (newRoomName: string) => {
-      setIsWelcomeHidden(true);
-      await getMedia();
-    },
-    [getMedia]
-  );
+  // Initialize call (UI 변경만)
+  const initCall = useCallback(() => {
+    setIsWelcomeHidden(true);
+    // 미디어 초기화는 VideoControls가 자동으로 처리
+  }, []);
 
   const handleWelcomeSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -313,7 +235,7 @@ export default function Lesson() {
       setMyNickname(nickname);
       roomNameRef.current = newRoomName; // ref도 업데이트
 
-      await initCall(newRoomName);
+      initCall();
 
       console.log(`📤 Joining room: ${newRoomName} as ${nickname}`);
       socket.emit("join_room", {
@@ -476,50 +398,6 @@ export default function Lesson() {
     };
   }, [socket, myUserId, createPeerConnection, closePeerConnection]);
 
-  // 미디어 컨트롤
-  const handleMuteClick = useCallback(() => {
-    if (myStreamRef.current) {
-      myStreamRef.current
-        .getAudioTracks()
-        .forEach((track) => (track.enabled = !track.enabled));
-      setIsMuted(!isMuted);
-    }
-  }, [isMuted]);
-
-  const handleCameraClick = useCallback(() => {
-    if (myStreamRef.current) {
-      myStreamRef.current
-        .getVideoTracks()
-        .forEach((track) => (track.enabled = !track.enabled));
-      setIsCameraOff(!isCameraOff);
-    }
-  }, [isCameraOff]);
-
-  const handleCameraChange = useCallback(
-    async (deviceId: string) => {
-      try {
-        await getMedia(deviceId);
-        setSelectedCameraId(deviceId);
-
-        // 모든 피어 연결의 비디오 트랙 교체
-        if (myStreamRef.current) {
-          const videoTrack = myStreamRef.current.getVideoTracks()[0];
-          for (const pc of peerConnections.current.values()) {
-            const videoSender = pc
-              .getSenders()
-              .find((sender) => sender.track?.kind === "video");
-            if (videoSender && videoTrack) {
-              await videoSender.replaceTrack(videoTrack);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error changing camera:", error);
-      }
-    },
-    [getMedia]
-  );
-
   // 채팅 메시지 전송
   const handleSendMessage = useCallback(
     (messageText: string) => {
@@ -551,71 +429,7 @@ export default function Lesson() {
     [myNickname, myUserId]
   );
 
-  // 하단 비디오 스트립을 위한 그리드 클래스와 비디오 크기 계산 (2배 크기)
-  const getVideoLayoutConfig = (totalUsers: number) => {
-    if (totalUsers === 1) {
-      return {
-        gridClass: "flex justify-center",
-        videoHeight: "h-80", // 320px - 혼자일 때 가장 크게 (160px -> 320px)
-        videoWidth: "w-64", // 256px (128px -> 256px)
-        containerClass: "flex justify-center items-center",
-      };
-    } else if (totalUsers === 2) {
-      return {
-        gridClass: "grid grid-cols-2 gap-6 justify-center",
-        videoHeight: "h-72", // 288px - 둘일 때 크게 (144px -> 288px)
-        videoWidth: "w-56", // 224px (112px -> 224px)
-        containerClass: "flex justify-center",
-      };
-    } else if (totalUsers <= 4) {
-      return {
-        gridClass: `grid grid-cols-${totalUsers} gap-4 justify-center`,
-        videoHeight: "h-64", // 256px (128px -> 256px)
-        videoWidth: "w-48", // 192px (96px -> 192px)
-        containerClass: "flex justify-center",
-      };
-    } else if (totalUsers <= 6) {
-      return {
-        gridClass: `grid grid-cols-${totalUsers} gap-3 justify-center`,
-        videoHeight: "h-56", // 224px (112px -> 224px)
-        videoWidth: "w-40", // 160px (80px -> 160px)
-        containerClass: "flex justify-center",
-      };
-    } else if (totalUsers <= 8) {
-      return {
-        gridClass: `grid grid-cols-${totalUsers} gap-2 justify-center`,
-        videoHeight: "h-48", // 192px (96px -> 192px)
-        videoWidth: "w-32", // 128px (64px -> 128px)
-        containerClass: "flex justify-center",
-      };
-    } else {
-      // 8명 초과시에도 8열 유지, 더 작게
-      return {
-        gridClass: "grid grid-cols-8 gap-2 justify-center",
-        videoHeight: "h-40", // 160px (80px -> 160px)
-        videoWidth: "w-28", // 112px (56px -> 112px)
-        containerClass: "flex justify-center",
-      };
-    }
-  };
-
-  // 비디오 영역이 다시 보일 때 스트림 재연결 (필요시에만)
-  useEffect(() => {
-    if (isVideoAreaVisible && myStreamRef.current && myFaceRef.current) {
-      // 내 비디오 재연결 (srcObject가 다를 때만)
-      if (myFaceRef.current.srcObject !== myStreamRef.current) {
-        myFaceRef.current.srcObject = myStreamRef.current;
-      }
-
-      // 원격 비디오들 재연결 (srcObject가 다를 때만)
-      for (const [userId, stream] of remoteStreams.current.entries()) {
-        const videoElement = remoteVideoRefs.current.get(userId);
-        if (videoElement && stream && videoElement.srcObject !== stream) {
-          videoElement.srcObject = stream;
-        }
-      }
-    }
-  }, [isVideoAreaVisible]);
+  // 비디오 영역 표시 상태 로직은 VideoControls로 이동
 
   // 정리
   useEffect(() => {
@@ -699,185 +513,62 @@ export default function Lesson() {
             onSendMessage={handleSendMessage}
           />
 
-          {/* 하단 컨트롤 및 비디오 영역 - 고정 위치 */}
-          <div className="fixed bottom-0 left-0 right-0 bg-black bg-opacity-90 p-3 space-y-3">
-            {/* 컨트롤 버튼들 */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              <Button
-                onClick={handleMuteClick}
-                variant={isMuted ? "destructive" : "default"}
-                size="sm"
-                className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
-              >
-                {isMuted ? "🔇 음소거 해제" : "🎤 음소거"}
-              </Button>
+          {/* 하단 컨트롤 및 비디오 영역 - VideoControls 컴포넌트 */}
+          <VideoControls
+            myUserId={myUserId}
+            myNickname={myNickname}
+            connectedUsers={connectedUsers}
+            myStreamRef={myStreamRef}
+            myFaceRef={myFaceRef}
+            remoteVideoRefs={remoteVideoRefs}
+            remoteStreams={remoteStreams}
+            peerConnections={peerConnections}
+            onMediaReady={async (stream) => {
+              console.log("lesson.tsx: 미디어 준비 완료", !!stream);
+              // 로컬 미디어가 준비된 후, 기존 피어 연결에 트랙을 연결하고 재협상
+              if (!stream) return;
 
-              <Button
-                onClick={handleCameraClick}
-                variant={isCameraOff ? "destructive" : "default"}
-                size="sm"
-                className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
-              >
-                {isCameraOff ? "📷 카메라 켜기" : "📹 카메라 끄기"}
-              </Button>
+              try {
+                const localAudioTrack = stream.getAudioTracks()[0] || null;
+                const localVideoTrack = stream.getVideoTracks()[0] || null;
 
-              <Button
-                onClick={() => setIsVideoAreaVisible(!isVideoAreaVisible)}
-                variant="default"
-                size="sm"
-                className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
-              >
-                {isVideoAreaVisible ? "📺 비디오 숨기기" : "📺 비디오 보기"}
-              </Button>
+                for (const [peerId, pc] of peerConnections.current.entries()) {
+                  // 이미 보낸 트랙이 없다면 추가
+                  const hasAudioSender = pc
+                    .getSenders()
+                    .some((s) => s.track?.kind === "audio");
+                  const hasVideoSender = pc
+                    .getSenders()
+                    .some((s) => s.track?.kind === "video");
 
-              {cameras.length > 0 && (
-                <Select
-                  value={selectedCameraId}
-                  onValueChange={handleCameraChange}
-                >
-                  <SelectTrigger className="w-48 bg-gray-700 text-white border-gray-600">
-                    <SelectValue placeholder="카메라 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cameras.map((camera) => (
-                      <SelectItem key={camera.deviceId} value={camera.deviceId}>
-                        {camera.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+                  if (localAudioTrack && !hasAudioSender) {
+                    pc.addTrack(localAudioTrack, stream);
+                  }
+                  if (localVideoTrack && !hasVideoSender) {
+                    pc.addTrack(localVideoTrack, stream);
+                  }
 
-              <Button
-                onClick={() => {
-                  cleanupAllConnections();
-                  setIsWelcomeHidden(false);
-                  setConnectedUsers(new Map());
-                  socket?.emit("user_left", myUserId);
-                  setIsCameraOff(false);
-                  setIsMuted(false);
-                }}
-                variant="outline"
-                size="sm"
-                className="bg-red-600 hover:bg-red-500 text-white border-red-500"
-              >
-                📞 방 나가기
-              </Button>
-            </div>
-
-            {/* 비디오 스트립 - 조건부 렌더링 */}
-            {isVideoAreaVisible &&
-              (() => {
-                const totalUsers = connectedUsers.size + 1;
-                const config = getVideoLayoutConfig(totalUsers);
-
-                return (
-                  <div className={`${config.containerClass} w-full`}>
-                    <div className={`${config.gridClass} max-w-fit`}>
-                      {/* 내 비디오 */}
-                      <div className="relative flex-shrink-0">
-                        <div className="relative group">
-                          <video
-                            ref={(el) => {
-                              myFaceRef.current = el;
-                              if (
-                                el &&
-                                myStreamRef.current &&
-                                el.srcObject !== myStreamRef.current
-                              ) {
-                                el.srcObject = myStreamRef.current;
-                                console.log("My video stream connected");
-                              }
-                            }}
-                            autoPlay
-                            playsInline
-                            muted
-                            className={`${config.videoWidth} ${config.videoHeight} object-cover rounded-lg border border-gray-300 bg-gray-800`}
-                            style={{ transform: "scaleX(-1)" }}
-                          />
-                          {isCameraOff && (
-                            <div className="absolute inset-0 bg-black rounded-lg flex items-center justify-center">
-                              <p className="text-white text-xs">Camera Off</p>
-                            </div>
-                          )}
-                          {/* 사용자 이름 라벨 */}
-                          <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white px-1 py-0.5 rounded text-xs">
-                            {totalUsers > 6
-                              ? myNickname.slice(0, 4)
-                              : myNickname}{" "}
-                            (나)
-                          </div>
-                          {/* 상태 표시 */}
-                          <div className="absolute top-1 right-1 flex space-x-1">
-                            {isMuted && (
-                              <div className="bg-red-500 text-white p-0.5 rounded text-xs">
-                                🔇
-                              </div>
-                            )}
-                            {isCameraOff && (
-                              <div className="bg-red-500 text-white p-0.5 rounded text-xs">
-                                📷
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 원격 사용자들 */}
-                      {Array.from(connectedUsers.entries()).map(
-                        ([userId, userInfo]) => (
-                          <div key={userId} className="relative flex-shrink-0">
-                            <div className="relative group">
-                              <video
-                                ref={(el) => {
-                                  if (el) {
-                                    remoteVideoRefs.current.set(userId, el);
-                                    const stream =
-                                      remoteStreams.current.get(userId);
-                                    if (stream && el.srcObject !== stream) {
-                                      el.srcObject = stream;
-                                      console.log(
-                                        "Remote stream connected for:",
-                                        userId
-                                      );
-                                    }
-                                  } else {
-                                    // 엘리먼트가 언마운트될 때 ref에서 제거
-                                    remoteVideoRefs.current.delete(userId);
-                                  }
-                                }}
-                                autoPlay
-                                playsInline
-                                className={`${config.videoWidth} ${config.videoHeight} object-cover rounded-lg border border-gray-300 bg-gray-800`}
-                                style={{ transform: "scaleX(-1)" }}
-                              />
-                              {/* 사용자 이름 라벨 */}
-                              <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white px-1 py-0.5 rounded text-xs">
-                                {totalUsers > 6
-                                  ? userInfo.nickname.slice(0, 4)
-                                  : userInfo.nickname}
-                              </div>
-                              {/* 연결 상태 */}
-                              <div className="absolute top-1 right-1">
-                                <div className="bg-green-500 text-white p-0.5 rounded text-xs">
-                                  ●
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-
-            {/* 연결 상태 디버그 정보 */}
-            <div className="text-xs text-gray-400 text-center">
-              활성 연결: {peerConnections.current.size}개 | 데이터 채널:{" "}
-              {dataChannels.current.size}개
-            </div>
-          </div>
+                  // 재협상(offer) 전송
+                  try {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    console.log(`📤 Renegotiation offer to ${peerId}`);
+                    socket?.emit("offer", offer, myUserId, peerId);
+                  } catch (err) {
+                    console.error("Renegotiation error:", err);
+                  }
+                }
+              } catch (err) {
+                console.error("onMediaReady handling error:", err);
+              }
+            }}
+            onLeaveRoom={() => {
+              cleanupAllConnections();
+              setIsWelcomeHidden(false);
+              setConnectedUsers(new Map());
+              socket?.emit("user_left", myUserId);
+            }}
+          />
         </div>
       )}
     </div>
