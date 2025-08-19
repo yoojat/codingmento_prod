@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/common/components/ui/select";
+import Chat from "../components/chat";
 
 interface Camera {
   deviceId: string;
@@ -48,6 +49,15 @@ export default function Lesson() {
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const [isVideoAreaVisible, setIsVideoAreaVisible] = useState(true);
+  const [chatMessages, setChatMessages] = useState<
+    Array<{
+      id: string;
+      userId: string;
+      nickname: string;
+      message: string;
+      timestamp: Date;
+    }>
+  >([]);
 
   // 다중 사용자 관리
   const [connectedUsers, setConnectedUsers] = useState<Map<string, UserState>>(
@@ -143,7 +153,17 @@ export default function Lesson() {
 
       dataChannel.onmessage = (event) => {
         console.log(`Message from ${userId}:`, event.data);
-        // 여기서 채팅 메시지 처리
+        try {
+          const parsedData = JSON.parse(event.data);
+          parsedData.data.timestamp = new Date(parsedData.data.timestamp);
+          if (parsedData.type === "chat") {
+            // 채팅 메시지 수신
+            setChatMessages((prev) => [...prev, parsedData.data]);
+            console.log("채팅 메시지 수신");
+          }
+        } catch (error) {
+          console.error("Error parsing data channel message:", error);
+        }
       };
 
       dataChannel.onerror = (error) => {
@@ -500,6 +520,37 @@ export default function Lesson() {
     [getMedia]
   );
 
+  // 채팅 메시지 전송
+  const handleSendMessage = useCallback(
+    (messageText: string) => {
+      if (!messageText.trim() || !myNickname) return;
+
+      const message = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId: myUserId,
+        nickname: myNickname,
+        message: messageText.trim(),
+        timestamp: new Date(),
+      };
+
+      // 내 메시지를 로컬에 추가
+      setChatMessages((prev) => [...prev, message]);
+
+      // 데이터 채널을 통해 다른 사용자들에게 전송
+      for (const dataChannel of dataChannels.current.values()) {
+        if (dataChannel.readyState === "open") {
+          dataChannel.send(
+            JSON.stringify({
+              type: "chat",
+              data: message,
+            })
+          );
+        }
+      }
+    },
+    [myNickname, myUserId]
+  );
+
   // 하단 비디오 스트립을 위한 그리드 클래스와 비디오 크기 계산 (2배 크기)
   const getVideoLayoutConfig = (totalUsers: number) => {
     if (totalUsers === 1) {
@@ -548,16 +599,18 @@ export default function Lesson() {
     }
   };
 
-  // 비디오 영역이 다시 보일 때 스트림 재연결
+  // 비디오 영역이 다시 보일 때 스트림 재연결 (필요시에만)
   useEffect(() => {
     if (isVideoAreaVisible && myStreamRef.current && myFaceRef.current) {
-      // 내 비디오 재연결
-      myFaceRef.current.srcObject = myStreamRef.current;
+      // 내 비디오 재연결 (srcObject가 다를 때만)
+      if (myFaceRef.current.srcObject !== myStreamRef.current) {
+        myFaceRef.current.srcObject = myStreamRef.current;
+      }
 
-      // 원격 비디오들 재연결
+      // 원격 비디오들 재연결 (srcObject가 다를 때만)
       for (const [userId, stream] of remoteStreams.current.entries()) {
         const videoElement = remoteVideoRefs.current.get(userId);
-        if (videoElement && stream) {
+        if (videoElement && stream && videoElement.srcObject !== stream) {
           videoElement.srcObject = stream;
         }
       }
@@ -625,8 +678,8 @@ export default function Lesson() {
             </div>
           </div>
 
-          {/* 메인 콘텐츠 영역 - 여기에 다른 콘텐츠를 추가할 수 있습니다 */}
-          <div className="flex-1 bg-gray-50 p-4">
+          {/* 메인 콘텐츠 영역 */}
+          <div className="flex-1 bg-gray-50 p-4 main-content">
             <div className="h-full flex items-center justify-center">
               <div className="text-gray-500 text-lg">
                 화상 통화 진행 중...
@@ -637,6 +690,14 @@ export default function Lesson() {
               </div>
             </div>
           </div>
+
+          {/* 채팅 컴포넌트 */}
+          <Chat
+            myUserId={myUserId}
+            myNickname={myNickname}
+            chatMessages={chatMessages}
+            onSendMessage={handleSendMessage}
+          />
 
           {/* 하단 컨트롤 및 비디오 영역 - 고정 위치 */}
           <div className="fixed bottom-0 left-0 right-0 bg-black bg-opacity-90 p-3 space-y-3">
@@ -719,9 +780,13 @@ export default function Lesson() {
                           <video
                             ref={(el) => {
                               myFaceRef.current = el;
-                              if (el && myStreamRef.current) {
+                              if (
+                                el &&
+                                myStreamRef.current &&
+                                el.srcObject !== myStreamRef.current
+                              ) {
                                 el.srcObject = myStreamRef.current;
-                                console.log("My video stream reconnected");
+                                console.log("My video stream connected");
                               }
                             }}
                             autoPlay
@@ -769,10 +834,10 @@ export default function Lesson() {
                                     remoteVideoRefs.current.set(userId, el);
                                     const stream =
                                       remoteStreams.current.get(userId);
-                                    if (stream) {
+                                    if (stream && el.srcObject !== stream) {
                                       el.srcObject = stream;
                                       console.log(
-                                        "Remote stream reconnected for:",
+                                        "Remote stream connected for:",
                                         userId
                                       );
                                     }
