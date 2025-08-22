@@ -77,6 +77,7 @@ export default function Lesson() {
     setConnectedUsers,
     setChatMessages,
     setEditorContents,
+    getLocalEditorContent: () => editorContents.get(myUserId) ?? "",
   });
 
   // WebRTC 시그널링 훅으로 분리

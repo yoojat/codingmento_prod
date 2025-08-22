@@ -29,6 +29,7 @@ interface UsePeerConnectionsArgs {
   >;
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   setEditorContents?: React.Dispatch<React.SetStateAction<Map<string, string>>>;
+  getLocalEditorContent?: () => string;
 }
 
 export function usePeerConnections({
@@ -38,6 +39,7 @@ export function usePeerConnections({
   setConnectedUsers,
   setChatMessages,
   setEditorContents,
+  getLocalEditorContent,
 }: UsePeerConnectionsArgs) {
   // Connections and channels
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -51,6 +53,20 @@ export function usePeerConnections({
     (dataChannel: RTCDataChannel, userId: string) => {
       dataChannel.onopen = () => {
         console.log(`Data channel opened with ${userId}`);
+        // 초기 에디터 동기화: 내 현재 코드 전송
+        try {
+          const content = getLocalEditorContent?.();
+          if (typeof content === "string") {
+            dataChannel.send(
+              JSON.stringify({
+                type: "editor",
+                data: { userId: myUserId, content },
+              })
+            );
+          }
+        } catch (e) {
+          console.warn("Failed to send initial editor sync:", e);
+        }
       };
 
       dataChannel.onmessage = (event) => {
@@ -89,7 +105,7 @@ export function usePeerConnections({
         console.log(`Data channel closed with ${userId}`);
       };
     },
-    [setChatMessages, setEditorContents]
+    [setChatMessages, setEditorContents, getLocalEditorContent, myUserId]
   );
 
   const createPeerConnection = useCallback(
