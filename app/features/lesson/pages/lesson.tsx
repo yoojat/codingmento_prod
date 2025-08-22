@@ -7,6 +7,7 @@ import { Button } from "~/common/components/ui/button";
 import Chat from "../components/chat";
 import VideoControls from "../components/video-controls";
 import { usePeerConnections } from "../../../hooks/use-peer-connections";
+import { Textarea } from "~/common/components/ui/textarea";
 
 interface UserState {
   nickname: string;
@@ -40,6 +41,11 @@ export default function Lesson() {
     }>
   >([]);
 
+  // 에디터 상태: userId -> content
+  const [editorContents, setEditorContents] = useState<Map<string, string>>(
+    new Map()
+  );
+
   // 다중 사용자 관리
   const [connectedUsers, setConnectedUsers] = useState<Map<string, UserState>>(
     new Map()
@@ -65,6 +71,17 @@ export default function Lesson() {
     myStreamRef,
     setConnectedUsers,
     setChatMessages,
+    setEditorContents,
+  });
+
+  // WebRTC 시그널링 훅으로 분리
+  useRoomSignaling({
+    socket,
+    myUserId,
+    createPeerConnection,
+    closePeerConnection,
+    peerConnections,
+    setConnectedUsers,
   });
 
   const handleWelcomeSubmit = useCallback(
@@ -93,16 +110,6 @@ export default function Lesson() {
     },
     [inputNickname, inputRoomName, socket, myUserId]
   );
-
-  // WebRTC 시그널링 훅으로 분리
-  useRoomSignaling({
-    socket,
-    myUserId,
-    createPeerConnection,
-    closePeerConnection,
-    peerConnections,
-    setConnectedUsers,
-  });
 
   // 채팅 메시지 전송
   const handleSendMessage = useCallback(
@@ -134,8 +141,6 @@ export default function Lesson() {
     },
     [myNickname, myUserId]
   );
-
-  // 비디오 영역 표시 상태 로직은 VideoControls로 이동
 
   // 정리
   useEffect(() => {
@@ -200,14 +205,51 @@ export default function Lesson() {
 
           {/* 메인 콘텐츠 영역 */}
           <div className="flex-1 bg-gray-50 p-4 main-content">
-            <div className="h-full flex items-center justify-center">
-              <div className="text-gray-500 text-lg">
-                화상 통화 진행 중...
-                <br />
-                <span className="text-sm">
-                  하단에서 카메라 화면을 확인하세요
-                </span>
-              </div>
+            {/* 사용자별 에디터 그리드: 최대 2열 */}
+            <div
+              className={
+                "grid gap-4 " +
+                (connectedUsers.size + 1 <= 2
+                  ? "grid-cols-1 md:grid-cols-2"
+                  : "grid-cols-1 md:grid-cols-2")
+              }
+            >
+              {/* 내 에디터 */}
+              <UserEditor
+                key={myUserId}
+                userId={myUserId}
+                nickname={myNickname || "나"}
+                value={editorContents.get(myUserId) ?? ""}
+                onChange={(next) => {
+                  setEditorContents((previous) => {
+                    const copy = new Map(previous);
+                    copy.set(myUserId, next);
+                    return copy;
+                  });
+                  // 데이터채널 브로드캐스트
+                  for (const dc of dataChannels.current.values()) {
+                    if (dc.readyState === "open") {
+                      dc.send(
+                        JSON.stringify({
+                          type: "editor",
+                          data: { userId: myUserId, content: next },
+                        })
+                      );
+                    }
+                  }
+                }}
+              />
+
+              {/* 원격 사용자 에디터들 */}
+              {Array.from(connectedUsers.entries()).map(([uid, u]) => (
+                <UserEditor
+                  key={uid}
+                  userId={uid}
+                  nickname={u.nickname}
+                  value={editorContents.get(uid) ?? ""}
+                  readOnly
+                />
+              ))}
             </div>
           </div>
 
@@ -277,6 +319,39 @@ export default function Lesson() {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+interface UserEditorProps {
+  userId: string;
+  nickname: string;
+  value: string;
+  onChange?: (next: string) => void;
+  readOnly?: boolean;
+}
+
+function UserEditor({
+  userId,
+  nickname,
+  value,
+  onChange,
+  readOnly,
+}: UserEditorProps) {
+  return (
+    <div className="bg-white rounded-lg shadow p-3 border">
+      <div className="mb-2 text-sm font-medium text-gray-700">
+        {nickname} — {userId.slice(-6)}
+      </div>
+      <Textarea
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+        placeholder={
+          readOnly ? "상대방 에디터" : "여기에 입력하면 실시간으로 공유됩니다"
+        }
+        className="min-h-48"
+        readOnly={readOnly}
+      />
     </div>
   );
 }

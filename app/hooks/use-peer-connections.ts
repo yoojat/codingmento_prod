@@ -15,6 +15,11 @@ interface UserState {
   isAudioOn: boolean;
 }
 
+interface EditorUpdate {
+  userId: string;
+  content: string;
+}
+
 interface UsePeerConnectionsArgs {
   socket: Socket | null;
   myUserId: string;
@@ -23,6 +28,7 @@ interface UsePeerConnectionsArgs {
     React.SetStateAction<Map<string, UserState>>
   >;
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  setEditorContents?: React.Dispatch<React.SetStateAction<Map<string, string>>>;
 }
 
 export function usePeerConnections({
@@ -31,6 +37,7 @@ export function usePeerConnections({
   myStreamRef,
   setConnectedUsers,
   setChatMessages,
+  setEditorContents,
 }: UsePeerConnectionsArgs) {
   // Connections and channels
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -59,6 +66,15 @@ export function usePeerConnections({
               parsedData.data as ChatMessage,
             ]);
             console.log("채팅 메시지 수신");
+          } else if (parsedData.type === "editor") {
+            const update = parsedData.data as EditorUpdate;
+            if (update?.userId != null && typeof update.content === "string") {
+              setEditorContents?.((previous) => {
+                const next = new Map(previous);
+                next.set(update.userId, update.content);
+                return next;
+              });
+            }
           }
         } catch (error) {
           console.error("Error parsing data channel message:", error);
@@ -73,7 +89,7 @@ export function usePeerConnections({
         console.log(`Data channel closed with ${userId}`);
       };
     },
-    [setChatMessages]
+    [setChatMessages, setEditorContents]
   );
 
   const createPeerConnection = useCallback(
