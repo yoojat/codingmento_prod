@@ -158,7 +158,7 @@ export default function Lesson() {
   }, [cleanupAllConnections]);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-none w-full">
       {!isWelcomeHidden && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">다중 사용자 영상 채팅</h2>
@@ -209,16 +209,9 @@ export default function Lesson() {
           </div>
 
           {/* 메인 콘텐츠 영역 */}
-          <div className="flex-1 bg-gray-50 p-4 main-content">
-            {/* 사용자별 에디터 그리드: 최대 2열 */}
-            <div
-              className={
-                "grid gap-4 " +
-                (connectedUsers.size + 1 <= 2
-                  ? "grid-cols-1 md:grid-cols-2"
-                  : "grid-cols-1 md:grid-cols-2")
-              }
-            >
+          <div className="flex-1 bg-gray-50 p-0 main-content">
+            {/* 사용자별 에디터 그리드: 최대 2열, 가로 폭 최대 사용 */}
+            <div className="grid gap-0 md:gap-0 grid-cols-1 md:grid-cols-2 w-full">
               {/* 내 에디터 */}
               <UserEditor
                 key={myUserId}
