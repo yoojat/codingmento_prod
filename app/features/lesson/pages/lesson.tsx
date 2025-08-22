@@ -8,6 +8,11 @@ import Chat from "../components/chat";
 import VideoControls from "../components/video-controls";
 import { usePeerConnections } from "../../../hooks/use-peer-connections";
 import { Textarea } from "~/common/components/ui/textarea";
+import { useSkulptRunner } from "~/hooks/use-skulpt-runner";
+import CodeMirror from "@uiw/react-codemirror";
+import { python } from "@codemirror/lang-python";
+import { keymap } from "@codemirror/view";
+import { defaultKeymap, historyKeymap } from "@codemirror/commands";
 
 interface UserState {
   nickname: string;
@@ -338,20 +343,80 @@ function UserEditor({
   onChange,
   readOnly,
 }: UserEditorProps) {
+  const { loaded, error, output, run, canvasRef } = useSkulptRunner(
+    `skulpt-output-${userId}`
+  );
+
+  const runKeymap = keymap.of([
+    {
+      key: "Mod-Enter",
+      run: () => {
+        run(value);
+        return true;
+      },
+    },
+  ]);
+  const defaultKeymapExt = keymap.of(defaultKeymap);
+  const historyKeymapExt = keymap.of(historyKeymap);
+
   return (
     <div className="bg-white rounded-lg shadow p-3 border">
       <div className="mb-2 text-sm font-medium text-gray-700">
         {nickname} — {userId.slice(-6)}
       </div>
-      <Textarea
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        placeholder={
-          readOnly ? "상대방 에디터" : "여기에 입력하면 실시간으로 공유됩니다"
-        }
-        className="min-h-48"
-        readOnly={readOnly}
-      />
+      <div className="space-y-3">
+        <CodeMirror
+          value={value}
+          height="280px"
+          extensions={[runKeymap, python(), defaultKeymapExt, historyKeymapExt]}
+          onChange={(v) => onChange?.(v)}
+          readOnly={!!readOnly}
+          basicSetup={{
+            lineNumbers: true,
+            highlightActiveLine: true,
+            highlightActiveLineGutter: true,
+            indentOnInput: true,
+            bracketMatching: true,
+            foldGutter: true,
+            defaultKeymap: false,
+            history: true,
+            allowMultipleSelections: true,
+          }}
+          theme="light"
+          style={{ border: "1px solid #ddd" }}
+        />
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => run(value)}
+            disabled={!loaded || !!error}
+            size="sm"
+          >
+            ▶️ Run
+          </Button>
+          {!loaded && !error && (
+            <span className="text-xs text-gray-500">Skulpt 로딩 중…</span>
+          )}
+          {error && (
+            <span className="text-xs text-red-600">Skulpt 로딩 실패</span>
+          )}
+        </div>
+        <div>
+          <h4 className="mb-1 text-xs font-semibold text-gray-700">콘솔</h4>
+          <pre
+            id={`skulpt-output-${userId}`}
+            className="p-2 bg-gray-100 rounded text-xs overflow-auto max-h-32"
+          >
+            {output}
+          </pre>
+        </div>
+        <div>
+          <h4 className="mb-1 text-xs font-semibold text-gray-700">Turtle</h4>
+          <div
+            ref={canvasRef}
+            className="w-full border border-gray-200 rounded"
+          />
+        </div>
+      </div>
     </div>
   );
 }

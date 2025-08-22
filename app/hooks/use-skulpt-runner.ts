@@ -8,7 +8,7 @@ declare global {
   }
 }
 
-export function useSkulptRunner() {
+export function useSkulptRunner(preId: string = "skulpt-output") {
   const { loaded, error } = useSkulpt();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [output, setOutput] = useState<string>("");
@@ -50,7 +50,7 @@ export function useSkulptRunner() {
 
     try {
       // 4) Skulpt 설정
-      window.Sk.pre = "skulpt-output";
+      window.Sk.pre = preId;
       window.Sk.configure({ output: outf, read: builtinRead });
 
       // 5) Turtle 그래픽 설정 (개선된 버전)
