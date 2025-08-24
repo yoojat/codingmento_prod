@@ -1,97 +1,87 @@
 {
-  "id": "59c13666-d9b9-47f6-a883-a2a72e507fed",
-  "prevId": "d3419172-98c8-4f3b-a31e-7d7dc0582aaf",
+  "id": "935c35f7-963b-428d-abc9-a731a297c269",
+  "prevId": "27a6fe10-839c-4751-948f-ac6783ed048e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.jobs": {
-      "name": "jobs",
+    "public.lesson_logs": {
+      "name": "lesson_logs",
       "schema": "",
       "columns": {
-        "job_id": {
-          "name": "job_id",
-          "type": "bigserial",
+        "id": {
+          "name": "id",
+          "type": "bigint",
           "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "lesson_logs_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "start_at": {
+          "name": "start_at",
+          "type": "timestamp",
+          "primaryKey": false,
           "notNull": true
         },
-        "position": {
-          "name": "position",
+        "end_at": {
+          "name": "end_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "overview": {
-          "name": "overview",
+        "subject": {
+          "name": "subject",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "responsibilities": {
-          "name": "responsibilities",
+        "content": {
+          "name": "content",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "qualifications": {
-          "name": "qualifications",
+        "class_vibe": {
+          "name": "class_vibe",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "benefits": {
-          "name": "benefits",
+        "student_reactions": {
+          "name": "student_reactions",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "skills": {
-          "name": "skills",
+        "img_url": {
+          "name": "img_url",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "company_name": {
-          "name": "company_name",
+        "next_week_plan": {
+          "name": "next_week_plan",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "company_logo": {
-          "name": "company_logo",
+        "lesson_id": {
+          "name": "lesson_id",
           "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_location": {
-          "name": "company_location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "apply_url": {
-          "name": "apply_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "job_type": {
-          "name": "job_type",
-          "type": "job_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "location": {
-          "name": "location",
-          "type": "location",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "salary_range": {
-          "name": "salary_range",
-          "type": "salary_range",
-          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -118,65 +108,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.follows": {
-      "name": "follows",
-      "schema": "",
-      "columns": {
-        "follower_id": {
-          "name": "follower_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "following_id": {
-          "name": "following_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "follows_follower_id_profiles_profile_id_fk": {
-          "name": "follows_follower_id_profiles_profile_id_fk",
-          "tableFrom": "follows",
-          "tableTo": "profiles",
-          "columnsFrom": [
-            "follower_id"
-          ],
-          "columnsTo": [
-            "profile_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "follows_following_id_profiles_profile_id_fk": {
-          "name": "follows_following_id_profiles_profile_id_fk",
-          "tableFrom": "follows",
-          "tableTo": "profiles",
-          "columnsFrom": [
-            "following_id"
-          ],
-          "columnsTo": [
-            "profile_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.profiles": {
       "name": "profiles",
       "schema": "",
@@ -187,6 +118,70 @@
           "primaryKey": true,
           "notNull": true
         },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "birth": {
+          "name": "birth",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gender": {
+          "name": "gender",
+          "type": "gender",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comment": {
+          "name": "comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lesson_day": {
+          "name": "lesson_day",
+          "type": "lesson_day",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lesson_time": {
+          "name": "lesson_time",
+          "type": "lesson_time",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_teacher": {
+          "name": "is_teacher",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "avatar": {
           "name": "avatar",
           "type": "text",
@@ -195,12 +190,6 @@
         },
         "name": {
           "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "username": {
-          "name": "username",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -219,21 +208,13 @@
         },
         "role": {
           "name": "role",
-          "type": "role",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'developer'"
-        },
-        "stats": {
-          "name": "stats",
-          "type": "jsonb",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "views": {
-          "name": "views",
-          "type": "jsonb",
+        "userId": {
+          "name": "userId",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -267,6 +248,20 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "profiles_userId_users_id_fk": {
+          "name": "profiles_userId_users_id_fk",
+          "tableFrom": "profiles",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -277,47 +272,35 @@
     }
   },
   "enums": {
-    "public.job_type": {
-      "name": "job_type",
+    "public.gender": {
+      "name": "gender",
       "schema": "public",
       "values": [
-        "full-time",
-        "part-time",
-        "remote"
+        "male",
+        "female",
+        "other"
       ]
     },
-    "public.location": {
-      "name": "location",
+    "public.lesson_day": {
+      "name": "lesson_day",
       "schema": "public",
       "values": [
-        "freelance",
-        "in-person",
-        "internship",
-        "hybrid"
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
       ]
     },
-    "public.salary_range": {
-      "name": "salary_range",
+    "public.lesson_time": {
+      "name": "lesson_time",
       "schema": "public",
       "values": [
-        "$0 - $50,000",
-        "$50,000 - $70,000",
-        "$70,000 - $100,000",
-        "$100,000 - $120,000",
-        "$120,000 - $150,000",
-        "$150,000 - $250,000",
-        "$250,000+"
-      ]
-    },
-    "public.role": {
-      "name": "role",
-      "schema": "public",
-      "values": [
-        "developer",
-        "designer",
-        "marketer",
-        "founder",
-        "product-manager"
+        "18:00-20:00",
+        "20:00-22:00",
+        "22:00-24:00"
       ]
     }
   },
