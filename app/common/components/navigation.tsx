@@ -93,7 +93,33 @@ const menus = [
       },
     ],
   },
-  { name: "수업기록", to: "/studylogs" },
+  {
+    name: "수업 관리",
+    to: "/lessonmanagements",
+    items: [
+      {
+        name: "수업 기록",
+        description: "수업기록",
+        to: "/lessonmanagements",
+      },
+      {
+        name: "수업 결제",
+        description: "수업 결제",
+        to: "/lessonmanagements/payment",
+      },
+    ],
+  },
+  {
+    name: "강사",
+    to: "/teacher/submit-lesson-log",
+    items: [
+      {
+        name: "수업기록",
+        description: "수업기록",
+        to: "/teacher/submit-lesson-log",
+      },
+    ],
+  },
 ];
 
 export default function Navigation({
@@ -155,7 +181,6 @@ export default function Navigation({
                     ) : (
                       <Link
                         to={menu.to}
-                        target={menu.target}
                         className="text-lg font-medium hover:text-blue-900"
                         onClick={() => setSheetOpen(false)}
                       >
@@ -184,7 +209,7 @@ export default function Navigation({
               <NavigationMenuItem key={menu.name}>
                 {menu.items ? (
                   <>
-                    <Link to={menu.to} target={menu.target}>
+                    <Link to={menu.to}>
                       <NavigationMenuTrigger>{menu.name}</NavigationMenuTrigger>
                     </Link>
                     <NavigationMenuContent>
@@ -218,11 +243,7 @@ export default function Navigation({
                     </NavigationMenuContent>
                   </>
                 ) : (
-                  <Link
-                    className={navigationMenuTriggerStyle()}
-                    to={menu.to}
-                    target={menu.target}
-                  >
+                  <Link className={navigationMenuTriggerStyle()} to={menu.to}>
                     {menu.name}
                   </Link>
                 )}

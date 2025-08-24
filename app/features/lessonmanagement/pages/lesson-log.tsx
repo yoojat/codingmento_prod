@@ -1,4 +1,4 @@
-import type { Route } from "./+types/study-log";
+import type { Route } from "./+types/lesson-log";
 
 export function meta() {
   return [

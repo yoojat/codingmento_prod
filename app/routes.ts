@@ -12,11 +12,15 @@ export default [
     route("/playground", "features/lesson/pages/playground.tsx"),
     route("/lesson", "features/lesson/pages/lesson.tsx"),
   ]),
-  ...prefix("/studylogs", [
-    index("features/studylog/pages/study-logs.tsx"),
-    layout("features/studylog/layouts/log-overview-layout.tsx", [
-      route("/:logId", "features/studylog/pages/study-log.tsx"),
+  ...prefix("/lessonmanagements", [
+    index("features/lessonmanagement/pages/lesson-logs.tsx"),
+    layout("features/lessonmanagement/layouts/log-overview-layout.tsx", [
+      route("/:logId", "features/lessonmanagement/pages/lesson-log.tsx"),
     ]),
+    route("/payment", "features/lessonmanagement/pages/payment.tsx"),
+  ]),
+  ...prefix("/teacher", [
+    route("/submit-lesson-log", "features/teacher/pages/submit-lesson-log.tsx"),
   ]),
   ...prefix("/my", [
     layout("features/users/layouts/dashboard-layout.tsx", [
