@@ -11,12 +11,18 @@ import {
   bigint,
 } from "drizzle-orm/pg-core";
 import { rooms } from "../lesson/schema";
+import { USER_LEVELS } from "./constants";
 
 const users = pgSchema("auth").table("users", {
   id: uuid().primaryKey(),
 });
 
 export const gender = pgEnum("gender", ["male", "female", "other"]);
+
+export const user_level = pgEnum(
+  "user_level",
+  USER_LEVELS.map((level) => level.label) as [string, ...string[]]
+);
 
 export const lesson_day = pgEnum("lesson_day", [
   "monday",
@@ -49,9 +55,8 @@ export const profiles = pgTable("profiles", {
   is_teacher: boolean().notNull().default(false),
   avatar: text(),
   name: text().notNull(),
-  headline: text(),
-  bio: text(),
-  role: text(),
+  introduction: text(),
+  level: user_level(),
   userId: uuid().references(() => users.id),
   room_id: bigint({ mode: "bigint" }).references((): AnyPgColumn => rooms.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
