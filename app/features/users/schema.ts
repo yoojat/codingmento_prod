@@ -7,8 +7,10 @@ import {
   text,
   timestamp,
   uuid,
-  foreignKey,
+  type AnyPgColumn,
+  bigint,
 } from "drizzle-orm/pg-core";
+import { rooms } from "../lesson/schema";
 
 const users = pgSchema("auth").table("users", {
   id: uuid().primaryKey(),
@@ -51,6 +53,15 @@ export const profiles = pgTable("profiles", {
   bio: text(),
   role: text(),
   userId: uuid().references(() => users.id),
+  room_id: bigint({ mode: "bigint" }).references((): AnyPgColumn => rooms.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const relationship = pgTable("relationship", {
+  id: bigint({ mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
+  parent_id: uuid().references(() => profiles.profile_id),
+  child_id: uuid().references(() => profiles.profile_id),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
