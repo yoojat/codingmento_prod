@@ -25,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/common/components/ui/dropdown-menu";
+import { useFiles } from "~/hooks/use-files";
 
 export interface FileNode {
   id: string;
@@ -65,53 +66,21 @@ export function FileExplorerSidebar({
   nodes,
   title = "Files",
 }: FileExplorerSidebarProps) {
-  const initialTree: FileNode[] = useMemo(
-    () =>
-      nodes ?? [
-        {
-          id: "root",
-          userId: 1,
-          name: "project",
-          type: "folder",
-          parentId: null,
-          path: "/project",
-          children: [
-            {
-              id: "main_py",
-              userId: 1,
-              name: "main.py",
-              type: "file",
-              parentId: "root",
-              path: "/project/main.py",
-            },
-            {
-              id: "utils",
-              userId: 1,
-              name: "utils",
-              type: "folder",
-              parentId: "root",
-              path: "/project/utils",
-              children: [
-                {
-                  id: "helpers_py",
-                  userId: 1,
-                  name: "helpers.py",
-                  type: "file",
-                  parentId: "utils",
-                  path: "/project/utils/helpers.py",
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    [nodes]
+  const { getTree, setTree, subscribeTree } = useFiles();
+  const [tree, setTreeState] = useState<FileNode[]>(() =>
+    nodes && nodes.length ? nodes : getTree()
   );
-
-  const [tree, setTree] = useState<FileNode[]>(initialTree);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     () => new Set(["/project", "/project/utils"])
   );
+
+  // keep tree synced with provider unless an explicit tree is passed
+  useEffect(() => {
+    if (nodes && nodes.length) return; // external control
+    setTreeState(getTree());
+    const unsub = subscribeTree((t) => setTreeState(t));
+    return unsub;
+  }, [getTree, subscribeTree, nodes]);
 
   // Inline create / rename states
   const [createTarget, setCreateTarget] = useState<{
@@ -296,12 +265,18 @@ export function FileExplorerSidebar({
       path: newPath,
       children: createTarget.type === "folder" ? [] : undefined,
     };
-    setTree((prev) => findAndAdd(prev, createTarget.parentPath, newNode));
+    if (nodes && nodes.length) {
+      setTreeState((prev) =>
+        findAndAdd(prev, createTarget.parentPath, newNode)
+      );
+    } else {
+      setTree((prev) => findAndAdd(prev, createTarget.parentPath, newNode));
+    }
     if (createTarget.type === "file") onSelectFile(newPath);
     setCreateTarget(null);
     setInputName("");
     setInputError("");
-  }, [createTarget, inputName, onSelectFile]);
+  }, [createTarget, inputName, onSelectFile, nodes, setTree]);
 
   const commitRename = useCallback(() => {
     if (!renameTarget) return;
@@ -318,8 +293,11 @@ export function FileExplorerSidebar({
     const oldPath = renameTarget.path;
     const newParent = parentPath;
     const newPath = `${newParent}/${name}`;
-    setTree((prev) => renameNode(prev, oldPath, name));
-    // update expanded keys
+    if (nodes && nodes.length) {
+      setTreeState((prev) => renameNode(prev, oldPath, name));
+    } else {
+      setTree((prev) => renameNode(prev, oldPath, name));
+    }
     setExpandedFolders((prev) => {
       const next = new Set<string>();
       for (const key of prev) {
@@ -327,7 +305,6 @@ export function FileExplorerSidebar({
       }
       return next;
     });
-    // if active file renamed, update selection
     if (
       activeFilePath &&
       (activeFilePath === oldPath || activeFilePath.startsWith(oldPath + "/"))
@@ -338,11 +315,23 @@ export function FileExplorerSidebar({
     setRenameTarget(null);
     setInputName("");
     setInputError("");
-  }, [renameTarget, inputName, tree, activeFilePath, onSelectFile]);
+  }, [
+    renameTarget,
+    inputName,
+    tree,
+    activeFilePath,
+    onSelectFile,
+    nodes,
+    setTree,
+  ]);
 
   const commitDelete = useCallback(
     (targetPath: string) => {
-      setTree((prev) => removeNode(prev, targetPath));
+      if (nodes && nodes.length) {
+        setTreeState((prev) => removeNode(prev, targetPath));
+      } else {
+        setTree((prev) => removeNode(prev, targetPath));
+      }
       setExpandedFolders((prev) => {
         const next = new Set<string>();
         for (const key of prev) if (!key.startsWith(targetPath)) next.add(key);
@@ -353,16 +342,14 @@ export function FileExplorerSidebar({
         (activeFilePath === targetPath ||
           activeFilePath.startsWith(targetPath + "/"))
       ) {
-        // clear selection if deleted
         onSelectFile("");
       }
     },
-    [activeFilePath, onSelectFile]
+    [activeFilePath, onSelectFile, nodes, setTree]
   );
 
   useEffect(() => {
     if (createTarget) {
-      // Defer to next frame to ensure element is mounted after menu closes
       requestAnimationFrame(() => {
         createInputRef.current?.focus();
         createInputRef.current?.select();

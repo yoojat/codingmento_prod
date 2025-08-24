@@ -15,9 +15,11 @@ import { SaveIcon, PlayIcon } from "lucide-react";
 import FileExplorerSidebar, {
   type FileNode,
 } from "~/features/lesson/components/file-explorer";
+import { useFiles } from "~/hooks/use-files";
 
 export default function Playground() {
   const { loaded, error, output, run, canvasRef } = useSkulptRunner();
+  const { getContent, setContent, subscribe } = useFiles();
 
   // Mock file system tree (will be replaced by DB later)
   const initialTree: FileNode[] = useMemo(
@@ -54,21 +56,10 @@ export default function Playground() {
   // Load active file content from localStorage or defaults
   useEffect(() => {
     if (!activeFilePath) return;
-    const key = `fs:${activeFilePath}`;
-    const saved = localStorage.getItem(key);
-    if (saved != null) {
-      setCode(saved);
-      return;
-    }
-    // default templates
-    if (activeFilePath.endsWith("main.py")) {
-      setCode('print("Hello from main.py")');
-    } else if (activeFilePath.endsWith("helpers.py")) {
-      setCode("def add(a, b):\n    return a + b\n");
-    } else {
-      setCode("");
-    }
-  }, [activeFilePath]);
+    setCode(getContent(activeFilePath));
+    const unsub = subscribe(activeFilePath, (content) => setCode(content));
+    return unsub;
+  }, [activeFilePath, getContent, subscribe]);
 
   // 1) Mod-Enter 키 눌렀을 때 run 실행
   const runKeymap = keymap.of([
@@ -86,11 +77,10 @@ export default function Playground() {
 
   const handleSave = useCallback(() => {
     if (!activeFilePath) return;
-    const key = `fs:${activeFilePath}`;
-    localStorage.setItem(key, code);
+    setContent(activeFilePath, code);
     setSaveInfo(`${activeFilePath} 저장 완료`);
     setTimeout(() => setSaveInfo(""), 1500);
-  }, [activeFilePath, code]);
+  }, [activeFilePath, code, setContent]);
 
   return (
     <SidebarProvider>

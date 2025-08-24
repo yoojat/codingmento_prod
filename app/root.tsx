@@ -12,6 +12,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import Navigation from "./common/components/navigation";
 import { Settings } from "luxon";
+import { FilesProvider } from "~/hooks/use-files";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -50,7 +51,7 @@ export default function App() {
   const { pathname } = useLocation();
 
   return (
-    <Layout>
+    <FilesProvider>
       <div className={pathname.includes("/auth/") ? "" : "py-20 px-5 md:px-20"}>
         {pathname.includes("/auth") ? null : (
           <Navigation
@@ -61,7 +62,7 @@ export default function App() {
         )}
         <Outlet />
       </div>
-    </Layout>
+    </FilesProvider>
   );
 }
 
