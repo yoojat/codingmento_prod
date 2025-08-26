@@ -26,31 +26,71 @@
 //   return logs;
 // };
 
-import client from "~/supa-client";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { DateTime } from "luxon";
+import { PAGE_SIZE } from "./constants";
 
-export const getLessonLogs = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 4000));
+export const lessonLogsSelect = `id,
+start_at,
+end_at,
+subject,
+content,
+class_vibe,
+student_reaction,
+img_url,
+next_week_plan,
+created_at,
+updated_at,
+profiles:profiles!lesson_logs_profile_id_fkey ( username )`;
 
+export const getLessonLogsByDateRange = async (
+  client: SupabaseClient,
+  {
+    startDate,
+    endDate,
+    limit,
+    page = 1,
+  }: {
+    startDate: DateTime;
+    endDate: DateTime;
+    limit: number;
+    page?: number;
+  }
+) => {
   const { data, error } = await client
     .from("lesson_logs")
-    .select(
-      `id,
-       start_at,
-       end_at,
-       subject,
-       content,
-       class_vibe,
-       student_reaction,
-       img_url,
-       next_week_plan,
-       created_at,
-       updated_at,
-       profiles:profiles!lesson_logs_profile_id_fkey ( username )`
-    )
-    .order("id", { ascending: true });
+    .select(lessonLogsSelect)
+    .order("id", { ascending: true })
+    .gte("created_at", startDate.toISO())
+    .lte("created_at", endDate.toISO())
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   console.log(data);
   if (error) {
     throw new Error(error.message);
   }
   return data;
+};
+
+export const getLessonLogsPagesByDateRange = async (
+  client: SupabaseClient,
+  {
+    startDate,
+    endDate,
+  }: {
+    startDate: DateTime;
+    endDate: DateTime;
+  }
+) => {
+  const { count, error } = await client
+    .from("lesson_logs")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", startDate.toISO())
+    .lte("created_at", endDate.toISO());
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!count) {
+    return 1;
+  }
+  return Math.ceil(count / PAGE_SIZE);
 };

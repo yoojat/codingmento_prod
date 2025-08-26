@@ -30,6 +30,7 @@
     "@react-router/node": "^7.5.3",
     "@react-router/serve": "^7.5.3",
     "@socket.io/admin-ui": "^0.5.1",
+    "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.56.0",
     "@types/react-router-dom": "^5.3.3",
     "@types/uuid": "^10.0.0",
