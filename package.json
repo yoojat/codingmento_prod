@@ -12,7 +12,8 @@
     "typecheck": "react-router typegen && tsc",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:typegen": "supabase gen types typescript --project-id omwwedrcwntnlzwevlrj --schema public > database.types.ts"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",
@@ -29,6 +30,7 @@
     "@react-router/node": "^7.5.3",
     "@react-router/serve": "^7.5.3",
     "@socket.io/admin-ui": "^0.5.1",
+    "@supabase/supabase-js": "^2.56.0",
     "@types/react-router-dom": "^5.3.3",
     "@types/uuid": "^10.0.0",
     "@uiw/react-codemirror": "^4.24.2",

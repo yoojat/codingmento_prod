@@ -1,23 +1,38 @@
 import ProductPagination from "~/common/components/wemake/product-pagination";
 import { LogCard } from "../components/log-card";
 import { Hero } from "~/common/components/hero";
-import { Link } from "react-router";
+import { Await, Link } from "react-router";
 import type { Route } from "./+types/lesson-logs";
+import { getLessonLogs } from "../queries";
+import { Suspense } from "react";
 
 export const meta: Route.MetaFunction = () => [
   { title: `학습기록 | 코딩멘토` },
 ];
+export const loader = async () => {
+  const [logs] = await Promise.all([getLessonLogs()]);
+  return { logs };
+};
 
-export default function LessonLogPage() {
+export const clientLoader = async ({
+  serverLoader,
+}: Route.ClientLoaderArgs) => {
+  //track analytics
+};
+
+export default function LessonLogPage({ loaderData }: Route.ComponentProps) {
+  const { logs } = loaderData;
+
   return (
     <div>
       <Hero title="학습기록" />
-      {Array.from({ length: 11 }).map((_, index) => (
-        <Link to={`/lessonmanagements/${index}`} key={`logId-${index}`}>
+
+      {logs.map((log) => (
+        <Link to={`/lessonmanagements/${log.id}`} key={`logId-${log.id}`}>
           <LogCard
-            id={`logId-${index}`}
-            timestamp="2024-07-30T10:31:00.000Z"
-            description="파이썬 기초, 변수 학습"
+            id={`logId-${log.id}`}
+            timestamp={log.start_at ?? ""}
+            description={log.subject ?? ""}
             className="mb-5"
           />
         </Link>

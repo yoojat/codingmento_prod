@@ -183,6 +183,7 @@ export default function Navigation({
                         to={menu.to}
                         className="text-lg font-medium hover:text-blue-900"
                         onClick={() => setSheetOpen(false)}
+                        prefetch="intent"
                       >
                         {menu.name}
                       </Link>
