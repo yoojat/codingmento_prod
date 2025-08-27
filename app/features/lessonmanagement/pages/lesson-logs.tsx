@@ -2,7 +2,7 @@ import ProductPagination from "~/common/components/wemake/product-pagination";
 import { LogCard } from "../components/log-card";
 import { Hero } from "~/common/components/hero";
 import {
-  Await,
+  // Await,
   data,
   isRouteErrorResponse,
   Link,
@@ -48,7 +48,7 @@ export const meta: Route.MetaFunction = ({ data }) => {
     },
   ];
 };
-export const loader = async ({ params, request }: Route.LoaderArgs) => {
+export const loader = async ({ request }: Route.LoaderArgs) => {
   const url = new URL(request.url);
   // check search params
   const { success: successSearchParams, data: parsedSearchParams } =
@@ -67,6 +67,7 @@ export const loader = async ({ params, request }: Route.LoaderArgs) => {
     year: parsedSearchParams.year,
     month: parsedSearchParams.month,
   }).setZone("Asia/Seoul");
+  // day는 1일로 고정
 
   if (!date.isValid) {
     throw data(
@@ -78,8 +79,10 @@ export const loader = async ({ params, request }: Route.LoaderArgs) => {
     );
   }
 
-  const today = DateTime.now().setZone("Asia/Seoul").startOf("month");
-  if (date > today) {
+  const startOfCurrentMonth = DateTime.now()
+    .setZone("Asia/Seoul")
+    .startOf("month");
+  if (date > startOfCurrentMonth) {
     throw data(
       {
         error_code: "future_date",
@@ -93,15 +96,8 @@ export const loader = async ({ params, request }: Route.LoaderArgs) => {
 
   const { client, headers } = makeSSRClient(request);
   const logs = await getLessonLogsByDateRange(client as SupabaseClient, {
-    // startDate: DateTime.now().startOf("day").minus({ days: 7 }),
-    startDate:
-      year && month
-        ? DateTime.fromObject({ year, month, day: 1 }).startOf("month")
-        : DateTime.now().startOf("month"),
-    endDate:
-      year && month
-        ? DateTime.fromObject({ year, month, day: 1 }).endOf("month")
-        : DateTime.now().endOf("month"),
+    startDate: DateTime.fromObject({ year, month, day: 1 }).startOf("month"),
+    endDate: DateTime.fromObject({ year, month, day: 1 }).endOf("month"),
     limit: 15,
     page: page ?? 1,
   });
@@ -109,14 +105,8 @@ export const loader = async ({ params, request }: Route.LoaderArgs) => {
   const totalPages = await getLessonLogsPagesByDateRange(
     client as SupabaseClient,
     {
-      startDate:
-        year && month
-          ? DateTime.fromObject({ year, month, day: 1 }).startOf("month")
-          : DateTime.now().startOf("month"),
-      endDate:
-        year && month
-          ? DateTime.fromObject({ year, month, day: 1 }).endOf("month")
-          : DateTime.now().endOf("month"),
+      startDate: DateTime.fromObject({ year, month, day: 1 }).startOf("month"),
+      endDate: DateTime.fromObject({ year, month, day: 1 }).endOf("month"),
     }
   );
   return { logs, totalPages, ...parsedSearchParams };
@@ -128,7 +118,7 @@ export const loader = async ({ params, request }: Route.LoaderArgs) => {
 //   //track analytics
 // };
 
-export default function LessonLogPage({ loaderData }: Route.ComponentProps) {
+export default function LessonLogPage() {
   const { logs, totalPages, year, month, page } =
     useLoaderData<typeof loader>();
 
