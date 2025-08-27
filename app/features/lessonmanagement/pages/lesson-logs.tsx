@@ -63,13 +63,17 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     );
   }
 
-  const date = DateTime.fromObject({
-    year: parsedSearchParams.year,
-    month: parsedSearchParams.month,
-  }).setZone("Asia/Seoul");
+  const selectedMonthStartKST = DateTime.fromObject(
+    {
+      year: parsedSearchParams.year,
+      month: parsedSearchParams.month,
+      day: 1,
+    },
+    { zone: "Asia/Seoul" }
+  ).startOf("month");
   // day는 1일로 고정
 
-  if (!date.isValid) {
+  if (!selectedMonthStartKST.isValid) {
     throw data(
       {
         error_code: "invalid_date",
@@ -79,10 +83,10 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     );
   }
 
-  const startOfCurrentMonth = DateTime.now()
+  const currentMonthStartKST = DateTime.now()
     .setZone("Asia/Seoul")
     .startOf("month");
-  if (date > startOfCurrentMonth) {
+  if (selectedMonthStartKST > currentMonthStartKST) {
     throw data(
       {
         error_code: "future_date",
@@ -95,9 +99,16 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   const { year, month, page } = parsedSearchParams;
 
   const { client, headers } = makeSSRClient(request);
+  const zone = "Asia/Seoul";
+  const monthStartKST = DateTime.fromObject(
+    { year, month, day: 1 },
+    { zone }
+  ).startOf("month");
+  const nextMonthStartKST = monthStartKST.plus({ months: 1 }).startOf("month");
+
   const logs = await getLessonLogsByDateRange(client as SupabaseClient, {
-    startDate: DateTime.fromObject({ year, month, day: 1 }).startOf("month"),
-    endDate: DateTime.fromObject({ year, month, day: 1 }).endOf("month"),
+    startDate: monthStartKST.toUTC(),
+    endDate: nextMonthStartKST.toUTC(),
     limit: 15,
     page: page ?? 1,
   });
@@ -105,8 +116,8 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   const totalPages = await getLessonLogsPagesByDateRange(
     client as SupabaseClient,
     {
-      startDate: DateTime.fromObject({ year, month, day: 1 }).startOf("month"),
-      endDate: DateTime.fromObject({ year, month, day: 1 }).endOf("month"),
+      startDate: monthStartKST.toUTC(),
+      endDate: nextMonthStartKST.toUTC(),
     }
   );
   return { logs, totalPages, ...parsedSearchParams };

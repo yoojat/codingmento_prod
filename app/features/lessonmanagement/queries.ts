@@ -66,9 +66,9 @@ export const getLessonLogsByDateRange = async (
   const { data, error } = await client
     .from("lesson_logs")
     .select(lessonLogsSelect)
-    .order("id", { ascending: true })
+    .order("created_at", { ascending: true })
     .gte("created_at", startDate.toISO())
-    .lte("created_at", endDate.toISO())
+    .lt("created_at", endDate.toISO())
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
   if (error) {
@@ -91,7 +91,7 @@ export const getLessonLogsPagesByDateRange = async (
     .from("lesson_logs")
     .select("id", { count: "exact", head: true })
     .gte("created_at", startDate.toISO())
-    .lte("created_at", endDate.toISO());
+    .lt("created_at", endDate.toISO());
   if (error) {
     throw new Error(error.message);
   }
