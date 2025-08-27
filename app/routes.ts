@@ -13,13 +13,20 @@ export default [
     route("/lesson", "features/lesson/pages/lesson.tsx"),
   ]),
   ...prefix("/lessonmanagements", [
-    index("features/lessonmanagement/pages/lesson-logs.tsx"),
+    // index("features/lessonmanagement/pages/lesson-logs.tsx"),
+    route("/logs", "features/lessonmanagement/pages/lesson-logs.tsx"),
+    // route(
+    //   "/logs/:year/:month",
+    //   "features/lessonmanagement/pages/lesson-logs.tsx"
+    // ),
     layout("features/lessonmanagement/layouts/log-overview-layout.tsx", [
       route("/:logId", "features/lessonmanagement/pages/lesson-log.tsx"),
     ]),
     route("/payment", "features/lessonmanagement/pages/payment.tsx"),
   ]),
   ...prefix("/teacher", [
+    route("/search", "features/teacher/pages/search-page.tsx"),
+    route("/student/:profile_id", "features/teacher/pages/student-info.tsx"),
     route("/submit-lesson-log", "features/teacher/pages/submit-lesson-log.tsx"),
   ]),
   ...prefix("/my", [

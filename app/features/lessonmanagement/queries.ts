@@ -26,9 +26,15 @@
 //   return logs;
 // };
 
+import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DateTime } from "luxon";
 import { PAGE_SIZE } from "./constants";
+const paramsSchema = z.object({
+  year: z.coerce.number(),
+  month: z.coerce.number(),
+  day: z.coerce.number(),
+});
 
 export const lessonLogsSelect = `id,
 start_at,
@@ -64,7 +70,7 @@ export const getLessonLogsByDateRange = async (
     .gte("created_at", startDate.toISO())
     .lte("created_at", endDate.toISO())
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-  console.log(data);
+
   if (error) {
     throw new Error(error.message);
   }

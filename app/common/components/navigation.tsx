@@ -95,12 +95,12 @@ const menus = [
   },
   {
     name: "수업 관리",
-    to: "/lessonmanagements",
+    to: "/lessonmanagements/logs",
     items: [
       {
         name: "수업 기록",
         description: "수업기록",
-        to: "/lessonmanagements",
+        to: "/lessonmanagements/logs",
       },
       {
         name: "수업 결제",
@@ -117,6 +117,11 @@ const menus = [
         name: "수업기록",
         description: "수업기록",
         to: "/teacher/submit-lesson-log",
+      },
+      {
+        name: "학생 검색",
+        description: "학생 검색",
+        to: "/teacher/search",
       },
     ],
   },

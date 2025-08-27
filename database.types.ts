@@ -130,6 +130,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "lesson_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
       lessons: {
@@ -169,10 +176,24 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "lessons_teacher_id_profiles_profile_id_fk"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "lessons_user_id_profiles_profile_id_fk"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "lessons_user_id_profiles_profile_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
             referencedColumns: ["profile_id"]
           },
         ]
@@ -199,6 +220,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "message_room_members_user_id_profiles_profile_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
             referencedColumns: ["profile_id"]
           },
         ]
@@ -240,6 +268,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "messages_sender_id_profiles_profile_id_fk"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
       payments: {
@@ -277,6 +312,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "payments_user_id_profiles_profile_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
             referencedColumns: ["profile_id"]
           },
         ]
@@ -407,10 +449,24 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "relationship_child_id_profiles_profile_id_fk"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "relationship_parent_id_profiles_profile_id_fk"
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "relationship_parent_id_profiles_profile_id_fk"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
             referencedColumns: ["profile_id"]
           },
         ]
@@ -442,11 +498,32 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "rooms_user_id_profiles_profile_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      students_view: {
+        Row: {
+          birth: string | null
+          comment: string | null
+          gender: Database["public"]["Enums"]["gender"] | null
+          lesson_count: number | null
+          lesson_day: Database["public"]["Enums"]["lesson_day"] | null
+          lesson_time: Database["public"]["Enums"]["lesson_time"] | null
+          location: string | null
+          phone: string | null
+          profile_id: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

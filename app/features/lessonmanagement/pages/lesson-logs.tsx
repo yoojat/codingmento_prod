@@ -1,29 +1,125 @@
 import ProductPagination from "~/common/components/wemake/product-pagination";
 import { LogCard } from "../components/log-card";
 import { Hero } from "~/common/components/hero";
-import { Await, Link } from "react-router";
-import { getLessonLogsByDateRange } from "../queries";
+import {
+  Await,
+  data,
+  isRouteErrorResponse,
+  Link,
+  useLoaderData,
+} from "react-router";
+import {
+  getLessonLogsByDateRange,
+  getLessonLogsPagesByDateRange,
+} from "../queries";
 // import { Suspense } from "react";
 import type { Route } from "./+types/lesson-logs";
 import { makeSSRClient } from "~/supa-client";
 import { DateTime } from "luxon";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import z from "zod";
+import { Button } from "~/common/components/ui/button";
 
-export const meta: Route.MetaFunction = () => [
-  { title: `학습기록 | 코딩멘토` },
-];
-export const loader = async ({ request }: Route.LoaderArgs) => {
-  console.log("loader");
+const searchParamsSchema = z.object({
+  year: z.coerce.number().optional().default(DateTime.now().year),
+  month: z.coerce.number().optional().default(DateTime.now().month),
+  page: z.coerce.number().min(1).optional().default(1),
+});
+// const paramsSchema = z.object({
+//   year: z.coerce.number().optional().default(DateTime.now().year),
+//   month: z.coerce.number().optional().default(DateTime.now().month),
+//   page: z.coerce.number().min(1).optional().default(1),
+// });
+
+export const meta: Route.MetaFunction = ({ data }) => {
+  const date = DateTime.fromObject({
+    year: data.year,
+    month: data.month,
+  })
+    .setZone("Asia/Seoul")
+    .setLocale("ko");
+
+  return [
+    {
+      title: ` ${date.toLocaleString({
+        month: "long",
+        year: "2-digit",
+      })} | 학습기록 | 코딩멘토`,
+    },
+  ];
+};
+export const loader = async ({ params, request }: Route.LoaderArgs) => {
+  const url = new URL(request.url);
+  // check search params
+  const { success: successSearchParams, data: parsedSearchParams } =
+    searchParamsSchema.safeParse(Object.fromEntries(url.searchParams));
+  if (!successSearchParams) {
+    throw data(
+      {
+        error_code: "invalid_page",
+        message: "Invalid page",
+      },
+      { status: 400 }
+    );
+  }
+
+  const date = DateTime.fromObject({
+    year: parsedSearchParams.year,
+    month: parsedSearchParams.month,
+  }).setZone("Asia/Seoul");
+
+  if (!date.isValid) {
+    throw data(
+      {
+        error_code: "invalid_date",
+        message: "Invalid date",
+      },
+      { status: 400 }
+    );
+  }
+
+  const today = DateTime.now().setZone("Asia/Seoul").startOf("month");
+  if (date > today) {
+    throw data(
+      {
+        error_code: "future_date",
+        message: "Future date",
+      },
+      { status: 400 }
+    );
+  }
+
+  const { year, month, page } = parsedSearchParams;
+
   const { client, headers } = makeSSRClient(request);
-  console.log(headers);
   const logs = await getLessonLogsByDateRange(client as SupabaseClient, {
-    startDate: DateTime.now().startOf("day").minus({ days: 7 }),
-    endDate: DateTime.now().endOf("day").plus({ days: 1 }),
-    limit: 7,
+    // startDate: DateTime.now().startOf("day").minus({ days: 7 }),
+    startDate:
+      year && month
+        ? DateTime.fromObject({ year, month, day: 1 }).startOf("month")
+        : DateTime.now().startOf("month"),
+    endDate:
+      year && month
+        ? DateTime.fromObject({ year, month, day: 1 }).endOf("month")
+        : DateTime.now().endOf("month"),
+    limit: 15,
+    page: page ?? 1,
   });
-  console.log(logs);
-  // const [logs] = await Promise.all([getLessonLogs()]);
-  return { logs };
+
+  const totalPages = await getLessonLogsPagesByDateRange(
+    client as SupabaseClient,
+    {
+      startDate:
+        year && month
+          ? DateTime.fromObject({ year, month, day: 1 }).startOf("month")
+          : DateTime.now().startOf("month"),
+      endDate:
+        year && month
+          ? DateTime.fromObject({ year, month, day: 1 }).endOf("month")
+          : DateTime.now().endOf("month"),
+    }
+  );
+  return { logs, totalPages, ...parsedSearchParams };
 };
 
 // export const clientLoader = async ({
@@ -33,12 +129,49 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 // };
 
 export default function LessonLogPage({ loaderData }: Route.ComponentProps) {
-  console.log("hello");
-  const { logs } = loaderData;
+  const { logs, totalPages, year, month, page } =
+    useLoaderData<typeof loader>();
+
+  const date = DateTime.fromObject({
+    year: year,
+    month: month,
+  })
+    .setZone("Asia/Seoul")
+    .setLocale("ko");
+
+  const prevMonth = date.minus({ month: 1 });
+  const nextMonth = date.plus({ month: 1 });
+  const isToday = date.equals(DateTime.now().startOf("month"));
 
   return (
-    <div>
-      <Hero title="학습기록" />
+    <div className="space-y-4">
+      <Hero title={`${date.year}년 ${date.month}월 학습기록`} />
+      <div className="flex items-center justify-center gap-2">
+        <Button variant="secondary" asChild>
+          <Link
+            to={`/lessonmanagements/logs/?year=${prevMonth.year}&month=${prevMonth.month}`}
+          >
+            &larr;{" "}
+            {prevMonth.toLocaleString({
+              month: "long",
+              year: "2-digit",
+            })}
+          </Link>
+        </Button>
+        {!isToday ? (
+          <Button variant="secondary" asChild>
+            <Link
+              to={`/lessonmanagements/logs/?year=${nextMonth.year}&month=${nextMonth.month}`}
+            >
+              {nextMonth.toLocaleString({
+                month: "long",
+                year: "2-digit",
+              })}
+              &rarr;
+            </Link>
+          </Button>
+        ) : null}
+      </div>
 
       {logs.map((log) => (
         <Link to={`/lessonmanagements/${log.id}`} key={`logId-${log.id}`}>
@@ -50,7 +183,21 @@ export default function LessonLogPage({ loaderData }: Route.ComponentProps) {
           />
         </Link>
       ))}
-      <ProductPagination totalPages={10} />
+      {totalPages > 1 ? <ProductPagination totalPages={totalPages} /> : null}
     </div>
   );
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  if (isRouteErrorResponse(error)) {
+    return (
+      <div>
+        {error.data.message} / {error.data.error_code}
+      </div>
+    );
+  }
+  if (error instanceof Error) {
+    return <div>{error.message}</div>;
+  }
+  return <div>Unknown error</div>;
 }

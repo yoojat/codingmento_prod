@@ -18,7 +18,7 @@ export default function LogPagination({ totalPages }: ProductPaginationProps) {
   const page = Number(searchParams.get("page") ?? 1);
   const onClick = (page: number) => {
     searchParams.set("page", page.toString());
-    setSearchParams(searchParams);
+    setSearchParams(searchParams, { preventScrollReset: true });
   };
 
   const getUrlWithPage = (page: number) => {
