@@ -29,6 +29,13 @@
       "when": 1756346326712,
       "tag": "0003_nice_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1756346506243,
+      "tag": "0004_hesitant_the_renegades",
+      "breakpoints": true
     }
   ]
 }

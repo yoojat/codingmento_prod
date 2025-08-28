@@ -51,7 +51,6 @@ export const profiles = pgTable("profiles", {
   gender: gender(),
   location: text(),
   comment: text(),
-  parent_id: uuid(),
   lesson_day: lesson_day(),
   lesson_time: lesson_time(),
   is_teacher: boolean().notNull().default(false),
