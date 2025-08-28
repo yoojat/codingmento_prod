@@ -6,13 +6,14 @@ import {
   type CookieMethodsServer,
 } from "@supabase/ssr";
 import type { Database as SupabaseDatabase } from "database.types";
-import type { MergeDeep, SetNonNullable, SetFieldType } from "type-fest";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { MergeDeep, SetNonNullable } from "type-fest";
 
-type Database = MergeDeep<
+export type Database = MergeDeep<
   SupabaseDatabase,
   {
     public: {
-      views: {
+      Views: {
         students_view: {
           Row: SetNonNullable<
             SupabaseDatabase["public"]["Views"]["students_view"]["Row"]
@@ -22,7 +23,8 @@ type Database = MergeDeep<
     };
   }
 >;
-export const browserClient = createBrowserClient(
+
+export const browserClient: SupabaseClient<Database> = createBrowserClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_ANON_KEY!
 );
@@ -47,7 +49,7 @@ export const makeSSRClient = (request: Request) => {
     },
   };
 
-  const serverSideClient = createServerClient(
+  const serverSideClient: SupabaseClient<Database> = createServerClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
     {

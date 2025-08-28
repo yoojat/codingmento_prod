@@ -3,6 +3,13 @@ import z from "zod";
 import { Hero } from "~/common/components/hero";
 import { Button } from "~/common/components/ui/button";
 import { Input } from "~/common/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "~/common/components/ui/card";
 import ProductPagination from "~/common/components/wemake/product-pagination";
 import type { Route } from "./+types/search-page";
 import { getStudentsByQuery, getStudentsPagesByQuery } from "../queries";
@@ -36,6 +43,8 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     parsedData.query,
     parsedData.page
   );
+
+  console.log(students);
   const totalPages = await getStudentsPagesByQuery(client, parsedData.query);
   return { students, totalPages, query: parsedData.query };
 };
@@ -54,7 +63,77 @@ export default function SearchPage() {
         />
         <Button type="submit">Search</Button>
       </Form>
-      <div className="w-full max-w-screen-xl mx-auto overflow-x-auto">
+      {/* Mobile: Card list */}
+      <div className="block md:hidden w-full max-w-screen-md mx-auto space-y-3 px-3">
+        {students.map((student) => {
+          const profileLink = `/teacher/student/${student.profile_id}`;
+          const parentNames = student.parent_names?.join(", ") || "-";
+          const parentPhones = student.parent_phones?.join(", ") || "-";
+          const teacherNames = student.teacher_names?.join(", ") || "-";
+          const teacherPhones = student.teacher_phones?.join(", ") || "-";
+          const lesson =
+            student.lesson_day && student.lesson_time
+              ? `${student.lesson_day} ${student.lesson_time}`
+              : student.lesson_time || student.lesson_day || "-";
+          return (
+            <Card key={student.profile_id} className="">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">
+                  <Link to={profileLink} className="underline">
+                    {student.username || student.name || "-"}
+                  </Link>
+                </CardTitle>
+                <CardDescription>{student.phone || "-"}</CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm space-y-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">생년월일:</span>
+                  <span>{student.birth || "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">성별:</span>
+                  <span>{student.gender || "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">주소:</span>
+                  <span>{student.location || "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">특이사항:</span>
+                  <span>{student.comment || student.description || "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">학부모 성함:</span>
+                  <span>{parentNames}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">학부모 연락처:</span>
+                  <span>{parentPhones}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">수업시간대:</span>
+                  <span>{lesson}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">레벨:</span>
+                  <span>{student.level || "-"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">담당 선생님:</span>
+                  <span>{teacherNames}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-muted-foreground">선생님 연락처:</span>
+                  <span>{teacherPhones}</span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Desktop: Table */}
+      <div className="hidden md:block w-full max-w-screen-xl mx-auto overflow-x-auto">
         <table className="w-full text-sm border-t border-b border-gray-200">
           <thead>
             <tr className="bg-gray-50">
@@ -77,6 +156,9 @@ export default function SearchPage() {
                 특이사항
               </th>
               <th className="px-3 py-2 text-left text-gray-600 font-medium">
+                학부모 성함
+              </th>
+              <th className="px-3 py-2 text-left text-gray-600 font-medium">
                 학부모 연락처
               </th>
               <th className="px-3 py-2 text-left text-gray-600 font-medium">
@@ -84,6 +166,12 @@ export default function SearchPage() {
               </th>
               <th className="px-3 py-2 text-left text-gray-600 font-medium">
                 레벨
+              </th>
+              <th className="px-3 py-2 text-left text-gray-600 font-medium">
+                담당 선생님
+              </th>
+              <th className="px-3 py-2 text-left text-gray-600 font-medium">
+                담당 선생님 전화 번호
               </th>
             </tr>
           </thead>
@@ -127,7 +215,12 @@ export default function SearchPage() {
                   </td>
                   <td className="px-3 py-2">
                     <Link to={profileLink} className="underline">
-                      {student.parrent_id || "-"}
+                      {student.parent_names?.join(", ") || "-"}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Link to={profileLink} className="underline">
+                      {student.parent_phones?.join(", ") || "-"}
                     </Link>
                   </td>
                   <td className="px-3 py-2">
@@ -140,6 +233,16 @@ export default function SearchPage() {
                   <td className="px-3 py-2">
                     <Link to={profileLink} className="underline">
                       {student.level || "-"}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Link to={profileLink} className="underline">
+                      {student.teacher_names?.join(", ") || "-"}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Link to={profileLink} className="underline">
+                      {student.teacher_phones?.join(", ") || "-"}
                     </Link>
                   </td>
                 </tr>

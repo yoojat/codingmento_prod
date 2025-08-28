@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PAGE_SIZE } from "../lessonmanagement/constants";
+import type { Database } from "~/supa-client";
 
 export const getStudentsByQuery = async (
-  client: SupabaseClient,
+  client: SupabaseClient<Database>,
   query: string,
   page: number
 ) => {
@@ -19,7 +20,7 @@ export const getStudentsByQuery = async (
 };
 
 export const getStudentsPagesByQuery = async (
-  client: SupabaseClient,
+  client: SupabaseClient<Database>,
   query: string
 ) => {
   const { count, error } = await client
@@ -36,7 +37,7 @@ export const getStudentsPagesByQuery = async (
 };
 
 export const getStudentById = async (
-  client: SupabaseClient,
+  client: SupabaseClient<Database>,
   studentId: string
 ) => {
   const { data, error } = await client

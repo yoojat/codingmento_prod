@@ -277,6 +277,53 @@ export type Database = {
           },
         ]
       }
+      parent_children: {
+        Row: {
+          child_id: string
+          created_at: string
+          parent_id: string
+        }
+        Insert: {
+          child_id: string
+          created_at?: string
+          parent_id: string
+        }
+        Update: {
+          child_id?: string
+          created_at?: string
+          parent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_children_child_id_profiles_profile_id_fk"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "parent_children_child_id_profiles_profile_id_fk"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "parent_children_parent_id_profiles_profile_id_fk"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "parent_children_parent_id_profiles_profile_id_fk"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -358,7 +405,6 @@ export type Database = {
           level: Database["public"]["Enums"]["user_level"] | null
           location: string | null
           name: string
-          parent_id: string | null
           phone: string | null
           profile_id: string
           room_id: number | null
@@ -379,7 +425,6 @@ export type Database = {
           level?: Database["public"]["Enums"]["user_level"] | null
           location?: string | null
           name: string
-          parent_id?: string | null
           phone?: string | null
           profile_id: string
           room_id?: number | null
@@ -400,7 +445,6 @@ export type Database = {
           level?: Database["public"]["Enums"]["user_level"] | null
           location?: string | null
           name?: string
-          parent_id?: string | null
           phone?: string | null
           profile_id?: string
           room_id?: number | null
@@ -415,59 +459,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rooms"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      relationship: {
-        Row: {
-          child_id: string | null
-          created_at: string
-          id: number
-          parent_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          child_id?: string | null
-          created_at?: string
-          id?: never
-          parent_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          child_id?: string | null
-          created_at?: string
-          id?: never
-          parent_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "relationship_child_id_profiles_profile_id_fk"
-            columns: ["child_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "relationship_child_id_profiles_profile_id_fk"
-            columns: ["child_id"]
-            isOneToOne: false
-            referencedRelation: "students_view"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "relationship_parent_id_profiles_profile_id_fk"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "relationship_parent_id_profiles_profile_id_fk"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "students_view"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -507,6 +498,53 @@ export type Database = {
           },
         ]
       }
+      teacher_students: {
+        Row: {
+          created_at: string
+          student_id: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          student_id: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          student_id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_students_student_id_profiles_profile_id_fk"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "teacher_students_student_id_profiles_profile_id_fk"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "teacher_students_teacher_id_profiles_profile_id_fk"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "teacher_students_teacher_id_profiles_profile_id_fk"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
     }
     Views: {
       students_view: {
@@ -517,9 +555,15 @@ export type Database = {
           lesson_count: number | null
           lesson_day: Database["public"]["Enums"]["lesson_day"] | null
           lesson_time: Database["public"]["Enums"]["lesson_time"] | null
+          level: Database["public"]["Enums"]["user_level"] | null
           location: string | null
+          parent_ids: string[] | null
+          parent_names: string[] | null
+          parent_phones: string[] | null
           phone: string | null
           profile_id: string | null
+          teacher_names: string[] | null
+          teacher_phones: string[] | null
           username: string | null
         }
         Relationships: []

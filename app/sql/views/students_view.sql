@@ -14,7 +14,8 @@ SELECT
     ARRAY_AGG(DISTINCT parent.username)        AS parent_names,
     ARRAY_AGG(DISTINCT parent.phone)           AS parent_phones,
     ARRAY_AGG(DISTINCT teacher.username)       AS teacher_names,
-    ARRAY_AGG(DISTINCT teacher.phone)          AS teacher_phones
+    ARRAY_AGG(DISTINCT teacher.phone)          AS teacher_phones,
+    profiles.level
 FROM public.profiles
 LEFT JOIN public.lesson_logs USING (profile_id)
 LEFT JOIN public.parent_children AS pc ON pc.child_id = profiles.profile_id
