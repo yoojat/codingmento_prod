@@ -15,6 +15,20 @@
       "when": 1756030578190,
       "tag": "0001_secret_nemesis",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1756346040043,
+      "tag": "0002_serious_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1756346326712,
+      "tag": "0003_nice_storm",
+      "breakpoints": true
     }
   ]
 }
