@@ -19,6 +19,14 @@ export const loader = async ({ request, params }: Route.LoaderArgs) => {
 
 export default function StudentInfo() {
   const { student } = useLoaderData<typeof loader>();
+  const lessonLogs = student.lesson_logs as unknown as {
+    subject: string;
+    startAt: string;
+    endAt: string;
+    payment_created_at: number;
+  }[];
+
+  console.log(lessonLogs);
 
   return (
     <div className="space-y-6">
@@ -81,18 +89,36 @@ export default function StudentInfo() {
             </tr>
           </thead>
           <tbody>
-            {student.lesson_log_subjects.map((subject, index) => (
-              <tr key={index} className="border-b">
-                <td className="px-3 py-2">{subject}</td>
-                <td className="px-3 py-2">
-                  {student.lesson_log_start_ats[index]}
-                </td>
-                <td className="px-3 py-2">
-                  {student.payment_created_ats[index]}
-                </td>
-              </tr>
-            ))}
-            {student.lesson_log_subjects.length === 0 && (
+            {lessonLogs.map((log, index) => {
+              return (
+                <tr key={index} className="border-b">
+                  <td className="px-3 py-2">
+                    {log.payment_created_at
+                      ? log.subject
+                        ? log.subject
+                        : "교육예정"
+                      : log.subject
+                      ? log.subject
+                      : "-"}
+                  </td>
+                  <td className="px-3 py-2">
+                    {log.payment_created_at
+                      ? log.startAt
+                        ? new Date(log.startAt).toLocaleDateString()
+                        : "교육예정"
+                      : log.startAt
+                      ? new Date(log.startAt).toLocaleDateString()
+                      : "-"}
+                  </td>
+                  <td className="px-3 py-2">
+                    {log.payment_created_at
+                      ? new Date(log.payment_created_at).toLocaleDateString()
+                      : "결제 내역 없음"}
+                  </td>
+                </tr>
+              );
+            })}
+            {lessonLogs.length === 0 && (
               <tr>
                 <td className="px-3 py-4" colSpan={3}>
                   수업 내역이 없습니다.

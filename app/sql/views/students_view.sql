@@ -16,15 +16,27 @@ SELECT
     ARRAY_AGG(DISTINCT teacher.username)       AS teacher_names,
     ARRAY_AGG(DISTINCT teacher.phone)          AS teacher_phones,
     profiles.level,
-    ARRAY_AGG(DISTINCT lesson_logs.id)         AS lesson_log_ids,
-    ARRAY_AGG(DISTINCT lesson_logs.start_at)   AS lesson_log_start_ats,
-    ARRAY_AGG(DISTINCT lesson_logs.end_at)     AS lesson_log_end_ats,
-    ARRAY_AGG(DISTINCT lesson_logs.subject)    AS lesson_log_subjects,
+  -- 수업(lesson_logs) JSON 배열
+    COALESCE((
+        SELECT jsonb_agg(
+                jsonb_build_object(
+                'id',      l.id,
+                'startAt', l.start_at,
+                'endAt',   l.end_at,
+                'subject', l.subject,
+                'payment_id', p.id,
+                'payment_created_at', p.created_at
+                )
+                ORDER BY l.start_at
+            )
+        FROM public.lesson_logs l
+        LEFT JOIN public.payments p ON p.id = l.payment_id
+        WHERE l.profile_id = profiles.profile_id
+    ), '[]'::jsonb) AS lesson_logs,
+
     ARRAY_AGG(DISTINCT payments.id)            AS payment_ids,
     ARRAY_AGG(DISTINCT payments.amount)        AS payment_amounts,
     ARRAY_AGG(DISTINCT payments.created_at)    AS payment_created_ats,
-    ARRAY_AGG(DISTINCT lesson_membership.id)   AS lesson_membership_ids,
-    ARRAY_AGG(DISTINCT lesson_membership.is_checked) AS lesson_membership_is_checked,
     profiles.avatar
 FROM public.profiles
 LEFT JOIN public.lesson_logs ON lesson_logs.profile_id = profiles.profile_id
@@ -33,6 +45,5 @@ LEFT JOIN public.profiles AS parent ON pc.parent_id = parent.profile_id
 LEFT JOIN public.teacher_students AS ts ON ts.student_id = profiles.profile_id
 LEFT JOIN public.profiles AS teacher ON ts.teacher_id = teacher.profile_id
 LEFT JOIN public.payments ON payments.user_id = profiles.profile_id
-LEFT JOIN public.lesson_membership ON lesson_membership.profile_id = profiles.profile_id
 WHERE profiles.is_teacher IS FALSE
 GROUP BY profiles.profile_id;

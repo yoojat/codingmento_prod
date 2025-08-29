@@ -88,6 +88,7 @@ export type Database = {
           id: number
           img_url: string | null
           next_week_plan: string | null
+          payment_id: number | null
           profile_id: string
           start_at: string | null
           student_reaction: string | null
@@ -102,6 +103,7 @@ export type Database = {
           id?: never
           img_url?: string | null
           next_week_plan?: string | null
+          payment_id?: number | null
           profile_id: string
           start_at?: string | null
           student_reaction?: string | null
@@ -116,6 +118,7 @@ export type Database = {
           id?: never
           img_url?: string | null
           next_week_plan?: string | null
+          payment_id?: number | null
           profile_id?: string
           start_at?: string | null
           student_reaction?: string | null
@@ -124,60 +127,21 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "lesson_logs_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "lesson_logs_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "students_view"
-            referencedColumns: ["profile_id"]
-          },
-        ]
-      }
-      lesson_membership: {
-        Row: {
-          created_at: string
-          id: number
-          is_checked: boolean
-          payment_id: number | null
-          profile_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: never
-          is_checked?: boolean
-          payment_id?: number | null
-          profile_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: never
-          is_checked?: boolean
-          payment_id?: number | null
-          profile_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lesson_membership_payment_id_payments_id_fk"
+            foreignKeyName: "lesson_logs_payment_id_payments_id_fk"
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "payments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "lesson_membership_profile_id_profiles_profile_id_fk"
+            foreignKeyName: "lesson_logs_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "lesson_membership_profile_id_profiles_profile_id_fk"
+            foreignKeyName: "lesson_logs_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "students_view"
@@ -375,6 +339,7 @@ export type Database = {
           amount: number
           created_at: string
           id: number
+          lesson_count: number
           product_id: number | null
           user_id: string
         }
@@ -382,6 +347,7 @@ export type Database = {
           amount: number
           created_at?: string
           id?: never
+          lesson_count: number
           product_id?: number | null
           user_id: string
         }
@@ -389,6 +355,7 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: never
+          lesson_count?: number
           product_id?: number | null
           user_id?: string
         }
@@ -601,12 +568,7 @@ export type Database = {
           gender: Database["public"]["Enums"]["gender"] | null
           lesson_count: number | null
           lesson_day: Database["public"]["Enums"]["lesson_day"] | null
-          lesson_log_end_ats: string[] | null
-          lesson_log_ids: number[] | null
-          lesson_log_start_ats: string[] | null
-          lesson_log_subjects: string[] | null
-          lesson_membership_ids: number[] | null
-          lesson_membership_is_checked: boolean[] | null
+          lesson_logs: Json | null
           lesson_time: Database["public"]["Enums"]["lesson_time"] | null
           level: Database["public"]["Enums"]["user_level"] | null
           location: string | null

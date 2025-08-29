@@ -80,7 +80,7 @@ export default function SearchPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">
                   <Link to={profileLink} className="underline">
-                    {student.username || student.name || "-"}
+                    {student.username || "-"}
                   </Link>
                 </CardTitle>
                 <CardDescription>{student.phone || "-"}</CardDescription>
