@@ -41,9 +41,11 @@ export const getStudentById = async (
   studentId: string
 ) => {
   const { data, error } = await client
-    .from("profiles")
+    .from("students_view")
     .select("*")
-    .eq("profile_id", studentId);
+    .eq("profile_id", studentId)
+    .single();
+
   if (error) {
     throw new Error(error.message);
   }

@@ -139,6 +139,52 @@ export type Database = {
           },
         ]
       }
+      lesson_membership: {
+        Row: {
+          created_at: string
+          id: number
+          is_checked: boolean
+          payment_id: number | null
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          is_checked?: boolean
+          payment_id?: number | null
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          is_checked?: boolean
+          payment_id?: number | null
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_membership_payment_id_payments_id_fk"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_membership_profile_id_profiles_profile_id_fk"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "lesson_membership_profile_id_profiles_profile_id_fk"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       lessons: {
         Row: {
           comment: string | null
@@ -549,17 +595,27 @@ export type Database = {
     Views: {
       students_view: {
         Row: {
+          avatar: string | null
           birth: string | null
           comment: string | null
           gender: Database["public"]["Enums"]["gender"] | null
           lesson_count: number | null
           lesson_day: Database["public"]["Enums"]["lesson_day"] | null
+          lesson_log_end_ats: string[] | null
+          lesson_log_ids: number[] | null
+          lesson_log_start_ats: string[] | null
+          lesson_log_subjects: string[] | null
+          lesson_membership_ids: number[] | null
+          lesson_membership_is_checked: boolean[] | null
           lesson_time: Database["public"]["Enums"]["lesson_time"] | null
           level: Database["public"]["Enums"]["user_level"] | null
           location: string | null
           parent_ids: string[] | null
           parent_names: string[] | null
           parent_phones: string[] | null
+          payment_amounts: number[] | null
+          payment_created_ats: string[] | null
+          payment_ids: number[] | null
           phone: string | null
           profile_id: string | null
           teacher_names: string[] | null

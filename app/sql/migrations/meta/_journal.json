@@ -36,6 +36,34 @@
       "when": 1756346506243,
       "tag": "0004_hesitant_the_renegades",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1756393826672,
+      "tag": "0005_wealthy_jamie_braddock",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1756393918241,
+      "tag": "0006_ambiguous_gauntlet",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1756429894672,
+      "tag": "0007_steady_proteus",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1756430022502,
+      "tag": "0008_secret_blue_shield",
+      "breakpoints": true
     }
   ]
 }

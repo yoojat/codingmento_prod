@@ -5,12 +5,14 @@ import {
   timestamp,
   uuid,
   varchar,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { profiles } from "~/features/users/schema";
 
 export const payments = pgTable("payments", {
   id: bigint({ mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
   amount: integer().notNull(),
+  lesson_count: integer().notNull(),
   user_id: uuid()
     .references(() => profiles.profile_id)
     .notNull(),

@@ -1,0 +1,1 @@
+ALTER TABLE "payments" ADD COLUMN "lesson_count" integer NOT NULL;

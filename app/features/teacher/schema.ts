@@ -1,5 +1,6 @@
 import { pgTable, bigint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { profiles } from "~/features/users/schema";
+import { payments } from "../lessonmanagement/schema";
 
 export const lessons = pgTable("lessons", {
   id: bigint({ mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
@@ -28,6 +29,7 @@ export const lessonLogs = pgTable("lesson_logs", {
   student_reaction: text(),
   img_url: text(),
   next_week_plan: text(),
+  payment_id: bigint({ mode: "bigint" }).references(() => payments.id),
   created_at: timestamp().notNull().defaultNow(),
   updated_at: timestamp().notNull().defaultNow(),
 });
