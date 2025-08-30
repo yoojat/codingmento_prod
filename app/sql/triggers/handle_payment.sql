@@ -32,7 +32,7 @@ begin
         remaining_count := NEW.lesson_count - COALESCE(updated_count, 0);
         IF remaining_count > 0 THEN
             INSERT INTO public.lesson_logs (profile_id, payment_id)
-            SELECT NEW.user_id, NEW.id
+            SELECT NEW.profile_id, NEW.id
             FROM generate_series(1, remaining_count);
         END IF;
     END IF;

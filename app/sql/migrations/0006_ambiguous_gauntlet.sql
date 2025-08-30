@@ -1,2 +1,0 @@
-ALTER TABLE "lesson_membership" ADD COLUMN "payment_id" bigint;--> statement-breakpoint
-ALTER TABLE "lesson_membership" ADD CONSTRAINT "lesson_membership_payment_id_payments_id_fk" FOREIGN KEY ("payment_id") REFERENCES "public"."payments"("id") ON DELETE no action ON UPDATE no action;

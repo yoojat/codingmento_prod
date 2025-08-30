@@ -1,5 +1,5 @@
 {
-  "id": "79626614-0c17-495d-97bf-fae2eef344b5",
+  "id": "b4e371d6-8ffb-4e67-9d78-7467677d9ddc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -212,6 +212,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "payment_id": {
+          "name": "payment_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -238,6 +244,19 @@
           ],
           "columnsTo": [
             "profile_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "lesson_logs_payment_id_payments_id_fk": {
+          "name": "lesson_logs_payment_id_payments_id_fk",
+          "tableFrom": "lesson_logs",
+          "tableTo": "payments",
+          "columnsFrom": [
+            "payment_id"
+          ],
+          "columnsTo": [
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -478,6 +497,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "lesson_count": {
+          "name": "lesson_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "user_id": {
           "name": "user_id",
           "type": "uuid",
@@ -676,6 +701,73 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.parent_children": {
+      "name": "parent_children",
+      "schema": "",
+      "columns": {
+        "parent_id": {
+          "name": "parent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "child_id": {
+          "name": "child_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "parent_children_parent_id_profiles_profile_id_fk": {
+          "name": "parent_children_parent_id_profiles_profile_id_fk",
+          "tableFrom": "parent_children",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "profile_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "parent_children_child_id_profiles_profile_id_fk": {
+          "name": "parent_children_child_id_profiles_profile_id_fk",
+          "tableFrom": "parent_children",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "child_id"
+          ],
+          "columnsTo": [
+            "profile_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "parent_children_parent_id_child_id_pk": {
+          "name": "parent_children_parent_id_child_id_pk",
+          "columns": [
+            "parent_id",
+            "child_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.profiles": {
       "name": "profiles",
       "schema": "",
@@ -723,12 +815,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "lesson_day": {
           "name": "lesson_day",
           "type": "lesson_day",
@@ -762,21 +848,16 @@
           "primaryKey": false,
           "notNull": true
         },
-        "headline": {
-          "name": "headline",
+        "introduction": {
+          "name": "introduction",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "bio": {
-          "name": "bio",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
+        "level": {
+          "name": "level",
+          "type": "user_level",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
         },
@@ -857,48 +938,24 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.relationship": {
-      "name": "relationship",
+    "public.teacher_students": {
+      "name": "teacher_students",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "relationship_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "parent_id": {
-          "name": "parent_id",
+        "teacher_id": {
+          "name": "teacher_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "child_id": {
-          "name": "child_id",
+        "student_id": {
+          "name": "student_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
@@ -907,34 +964,42 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "relationship_parent_id_profiles_profile_id_fk": {
-          "name": "relationship_parent_id_profiles_profile_id_fk",
-          "tableFrom": "relationship",
+        "teacher_students_teacher_id_profiles_profile_id_fk": {
+          "name": "teacher_students_teacher_id_profiles_profile_id_fk",
+          "tableFrom": "teacher_students",
           "tableTo": "profiles",
           "columnsFrom": [
-            "parent_id"
+            "teacher_id"
           ],
           "columnsTo": [
             "profile_id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "relationship_child_id_profiles_profile_id_fk": {
-          "name": "relationship_child_id_profiles_profile_id_fk",
-          "tableFrom": "relationship",
+        "teacher_students_student_id_profiles_profile_id_fk": {
+          "name": "teacher_students_student_id_profiles_profile_id_fk",
+          "tableFrom": "teacher_students",
           "tableTo": "profiles",
           "columnsFrom": [
-            "child_id"
+            "student_id"
           ],
           "columnsTo": [
             "profile_id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "teacher_students_teacher_id_student_id_pk": {
+          "name": "teacher_students_teacher_id_student_id_pk",
+          "columns": [
+            "teacher_id",
+            "student_id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -979,6 +1044,17 @@
         "18:00-20:00",
         "20:00-22:00",
         "22:00-24:00"
+      ]
+    },
+    "public.user_level": {
+      "name": "user_level",
+      "schema": "public",
+      "values": [
+        "code-explorer",
+        "code-pioneer",
+        "code-solver",
+        "code-trailblazer",
+        "code-conqueror"
       ]
     }
   },

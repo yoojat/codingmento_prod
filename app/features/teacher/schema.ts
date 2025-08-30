@@ -20,7 +20,7 @@ export const lessonLogs = pgTable("lesson_logs", {
   id: bigint({ mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
   start_at: timestamp(),
   end_at: timestamp(),
-  user_id: uuid()
+  profile_id: uuid()
     .references(() => profiles.profile_id)
     .notNull(),
   subject: text(),

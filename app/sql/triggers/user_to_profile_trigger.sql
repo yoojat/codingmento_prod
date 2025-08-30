@@ -1,3 +1,5 @@
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+
 create function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -14,6 +16,8 @@ begin
     return new;
 end;
 $$;
+
+DROP TRIGGER IF EXISTS user_to_profile_trigger on auth.users;
 
 create trigger user_to_profile_trigger
 after insert on auth.users

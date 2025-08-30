@@ -2,6 +2,7 @@ CREATE TYPE "public"."file_type" AS ENUM('folder', 'file');--> statement-breakpo
 CREATE TYPE "public"."gender" AS ENUM('male', 'female', 'other');--> statement-breakpoint
 CREATE TYPE "public"."lesson_day" AS ENUM('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday');--> statement-breakpoint
 CREATE TYPE "public"."lesson_time" AS ENUM('18:00-20:00', '20:00-22:00', '22:00-24:00');--> statement-breakpoint
+CREATE TYPE "public"."user_level" AS ENUM('code-explorer', 'code-pioneer', 'code-solver', 'code-trailblazer', 'code-conqueror');--> statement-breakpoint
 CREATE TABLE "file_contents" (
 	"id" bigint PRIMARY KEY NOT NULL,
 	"content" text,
@@ -32,6 +33,7 @@ CREATE TABLE "lesson_logs" (
 	"student_reaction" text,
 	"img_url" text,
 	"next_week_plan" text,
+	"payment_id" bigint,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -60,6 +62,7 @@ CREATE TABLE "rooms" (
 CREATE TABLE "payments" (
 	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "payments_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"amount" integer NOT NULL,
+	"lesson_count" integer NOT NULL,
 	"user_id" uuid NOT NULL,
 	"product_id" bigint,
 	"created_at" timestamp DEFAULT now() NOT NULL
@@ -82,6 +85,13 @@ CREATE TABLE "lessons" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "parent_children" (
+	"parent_id" uuid NOT NULL,
+	"child_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "parent_children_parent_id_child_id_pk" PRIMARY KEY("parent_id","child_id")
+);
+--> statement-breakpoint
 CREATE TABLE "profiles" (
 	"profile_id" uuid PRIMARY KEY NOT NULL,
 	"username" text NOT NULL,
@@ -90,31 +100,29 @@ CREATE TABLE "profiles" (
 	"gender" "gender",
 	"location" text,
 	"comment" text,
-	"parent_id" uuid,
 	"lesson_day" "lesson_day",
 	"lesson_time" "lesson_time",
 	"is_teacher" boolean DEFAULT false NOT NULL,
 	"avatar" text,
 	"name" text NOT NULL,
-	"headline" text,
-	"bio" text,
-	"role" text,
+	"introduction" text,
+	"level" "user_level",
 	"userId" uuid,
 	"room_id" bigint,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "relationship" (
-	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "relationship_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
-	"parent_id" uuid,
-	"child_id" uuid,
+CREATE TABLE "teacher_students" (
+	"teacher_id" uuid NOT NULL,
+	"student_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	CONSTRAINT "teacher_students_teacher_id_student_id_pk" PRIMARY KEY("teacher_id","student_id")
 );
 --> statement-breakpoint
 ALTER TABLE "file_contents" ADD CONSTRAINT "file_contents_id_files_id_fk" FOREIGN KEY ("id") REFERENCES "public"."files"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lesson_logs" ADD CONSTRAINT "lesson_logs_user_id_profiles_profile_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("profile_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "lesson_logs" ADD CONSTRAINT "lesson_logs_payment_id_payments_id_fk" FOREIGN KEY ("payment_id") REFERENCES "public"."payments"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "message_room_members" ADD CONSTRAINT "message_room_members_user_id_profiles_profile_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("profile_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_message_room_id_rooms_id_fk" FOREIGN KEY ("message_room_id") REFERENCES "public"."rooms"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_sender_id_profiles_profile_id_fk" FOREIGN KEY ("sender_id") REFERENCES "public"."profiles"("profile_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -123,8 +131,10 @@ ALTER TABLE "payments" ADD CONSTRAINT "payments_user_id_profiles_profile_id_fk" 
 ALTER TABLE "payments" ADD CONSTRAINT "payments_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lessons" ADD CONSTRAINT "lessons_user_id_profiles_profile_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("profile_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lessons" ADD CONSTRAINT "lessons_teacher_id_profiles_profile_id_fk" FOREIGN KEY ("teacher_id") REFERENCES "public"."profiles"("profile_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "parent_children" ADD CONSTRAINT "parent_children_parent_id_profiles_profile_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."profiles"("profile_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "parent_children" ADD CONSTRAINT "parent_children_child_id_profiles_profile_id_fk" FOREIGN KEY ("child_id") REFERENCES "public"."profiles"("profile_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "profiles" ADD CONSTRAINT "profiles_profile_id_users_id_fk" FOREIGN KEY ("profile_id") REFERENCES "auth"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "profiles" ADD CONSTRAINT "profiles_userId_users_id_fk" FOREIGN KEY ("userId") REFERENCES "auth"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "profiles" ADD CONSTRAINT "profiles_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "relationship" ADD CONSTRAINT "relationship_parent_id_profiles_profile_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."profiles"("profile_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "relationship" ADD CONSTRAINT "relationship_child_id_profiles_profile_id_fk" FOREIGN KEY ("child_id") REFERENCES "public"."profiles"("profile_id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "teacher_students" ADD CONSTRAINT "teacher_students_teacher_id_profiles_profile_id_fk" FOREIGN KEY ("teacher_id") REFERENCES "public"."profiles"("profile_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "teacher_students" ADD CONSTRAINT "teacher_students_student_id_profiles_profile_id_fk" FOREIGN KEY ("student_id") REFERENCES "public"."profiles"("profile_id") ON DELETE cascade ON UPDATE no action;

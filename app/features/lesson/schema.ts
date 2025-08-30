@@ -7,6 +7,7 @@ import {
   pgEnum,
   integer,
   varchar,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { profiles } from "~/features/users/schema";
 

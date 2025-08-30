@@ -58,7 +58,6 @@ export const profiles = pgTable("profiles", {
   name: text().notNull(),
   introduction: text(),
   level: user_level(),
-  userId: uuid().references(() => users.id),
   room_id: bigint({ mode: "bigint" }).references((): AnyPgColumn => rooms.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

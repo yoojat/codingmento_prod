@@ -24,9 +24,9 @@ export default function StudentInfo() {
     startAt: string;
     endAt: string;
     payment_created_at: number;
+    product_name: string;
+    product_amount: number;
   }[];
-
-  console.log(lessonLogs);
 
   return (
     <div className="space-y-6">
@@ -84,7 +84,13 @@ export default function StudentInfo() {
                 교육 일자
               </th>
               <th className="px-3 py-2 text-left text-gray-600 font-medium">
+                결제 일자
+              </th>
+              <th className="px-3 py-2 text-left text-gray-600 font-medium">
                 결제 내역
+              </th>
+              <th className="px-3 py-2 text-left text-gray-600 font-medium">
+                결제 금액
               </th>
             </tr>
           </thead>
@@ -113,6 +119,16 @@ export default function StudentInfo() {
                   <td className="px-3 py-2">
                     {log.payment_created_at
                       ? new Date(log.payment_created_at).toLocaleDateString()
+                      : "결제 내역 없음"}
+                  </td>
+                  <td className="px-3 py-2">
+                    {log.payment_created_at
+                      ? `${log.product_name} `
+                      : "결제 내역 없음"}
+                  </td>
+                  <td className="px-3 py-2">
+                    {log.payment_created_at
+                      ? `${log.product_amount}`
                       : "결제 내역 없음"}
                   </td>
                 </tr>

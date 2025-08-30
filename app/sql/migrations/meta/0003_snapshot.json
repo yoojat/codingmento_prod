@@ -1,6 +1,6 @@
 {
-  "id": "533caafb-611d-434c-b36f-c0b012ed6529",
-  "prevId": "423c427b-2c79-4f3a-9562-6e2fd58a3467",
+  "id": "50bdcfeb-c95e-4065-b3e1-5ebd003754cc",
+  "prevId": "420dff45-dc68-4b9f-9845-091858567faa",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -170,8 +170,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "user_id": {
-          "name": "user_id",
+        "profile_id": {
+          "name": "profile_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -212,6 +212,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "payment_id": {
+          "name": "payment_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -229,15 +235,28 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "lesson_logs_user_id_profiles_profile_id_fk": {
-          "name": "lesson_logs_user_id_profiles_profile_id_fk",
+        "lesson_logs_profile_id_profiles_profile_id_fk": {
+          "name": "lesson_logs_profile_id_profiles_profile_id_fk",
           "tableFrom": "lesson_logs",
           "tableTo": "profiles",
           "columnsFrom": [
-            "user_id"
+            "profile_id"
           ],
           "columnsTo": [
             "profile_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "lesson_logs_payment_id_payments_id_fk": {
+          "name": "lesson_logs_payment_id_payments_id_fk",
+          "tableFrom": "lesson_logs",
+          "tableTo": "payments",
+          "columnsFrom": [
+            "payment_id"
+          ],
+          "columnsTo": [
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -478,8 +497,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
+        "lesson_count": {
+          "name": "lesson_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "profile_id": {
+          "name": "profile_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -500,12 +525,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "payments_user_id_profiles_profile_id_fk": {
-          "name": "payments_user_id_profiles_profile_id_fk",
+        "payments_profile_id_profiles_profile_id_fk": {
+          "name": "payments_profile_id_profiles_profile_id_fk",
           "tableFrom": "payments",
           "tableTo": "profiles",
           "columnsFrom": [
-            "user_id"
+            "profile_id"
           ],
           "columnsTo": [
             "profile_id"
@@ -790,12 +815,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "lesson_day": {
           "name": "lesson_day",
           "type": "lesson_day",
@@ -842,12 +861,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "userId": {
-          "name": "userId",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "room_id": {
           "name": "room_id",
           "type": "bigint",
@@ -883,20 +896,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "profiles_userId_users_id_fk": {
-          "name": "profiles_userId_users_id_fk",
-          "tableFrom": "profiles",
-          "tableTo": "users",
-          "schemaTo": "auth",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
           "onUpdate": "no action"
         },
         "profiles_room_id_rooms_id_fk": {

@@ -1,6 +1,6 @@
 {
-  "id": "423c427b-2c79-4f3a-9562-6e2fd58a3467",
-  "prevId": "b7a7589e-4aa7-4cdb-9e40-fe085e65a786",
+  "id": "420dff45-dc68-4b9f-9845-091858567faa",
+  "prevId": "8f5bf14c-063c-4c4f-9684-4c332f1ca52c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -170,8 +170,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "user_id": {
-          "name": "user_id",
+        "profile_id": {
+          "name": "profile_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -212,6 +212,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "payment_id": {
+          "name": "payment_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -229,15 +235,28 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "lesson_logs_user_id_profiles_profile_id_fk": {
-          "name": "lesson_logs_user_id_profiles_profile_id_fk",
+        "lesson_logs_profile_id_profiles_profile_id_fk": {
+          "name": "lesson_logs_profile_id_profiles_profile_id_fk",
           "tableFrom": "lesson_logs",
           "tableTo": "profiles",
           "columnsFrom": [
-            "user_id"
+            "profile_id"
           ],
           "columnsTo": [
             "profile_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "lesson_logs_payment_id_payments_id_fk": {
+          "name": "lesson_logs_payment_id_payments_id_fk",
+          "tableFrom": "lesson_logs",
+          "tableTo": "payments",
+          "columnsFrom": [
+            "payment_id"
+          ],
+          "columnsTo": [
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -478,8 +497,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
+        "lesson_count": {
+          "name": "lesson_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "profile_id": {
+          "name": "profile_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -500,12 +525,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "payments_user_id_profiles_profile_id_fk": {
-          "name": "payments_user_id_profiles_profile_id_fk",
+        "payments_profile_id_profiles_profile_id_fk": {
+          "name": "payments_profile_id_profiles_profile_id_fk",
           "tableFrom": "payments",
           "tableTo": "profiles",
           "columnsFrom": [
-            "user_id"
+            "profile_id"
           ],
           "columnsTo": [
             "profile_id"
@@ -676,6 +701,73 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.parent_children": {
+      "name": "parent_children",
+      "schema": "",
+      "columns": {
+        "parent_id": {
+          "name": "parent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "child_id": {
+          "name": "child_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "parent_children_parent_id_profiles_profile_id_fk": {
+          "name": "parent_children_parent_id_profiles_profile_id_fk",
+          "tableFrom": "parent_children",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "profile_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "parent_children_child_id_profiles_profile_id_fk": {
+          "name": "parent_children_child_id_profiles_profile_id_fk",
+          "tableFrom": "parent_children",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "child_id"
+          ],
+          "columnsTo": [
+            "profile_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "parent_children_parent_id_child_id_pk": {
+          "name": "parent_children_parent_id_child_id_pk",
+          "columns": [
+            "parent_id",
+            "child_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.profiles": {
       "name": "profiles",
       "schema": "",
@@ -720,12 +812,6 @@
         "comment": {
           "name": "comment",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
