@@ -25,7 +25,6 @@ export const loader = async ({
 }: Route.LoaderArgs & { params: { username: string } }) => {
   const { client } = makeSSRClient(request);
   const profile = await getUserProfile(client, params.username);
-  console.log(profile);
   return { profile };
 };
 

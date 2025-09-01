@@ -109,7 +109,6 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   const logs = await getLessonLogsByDateRange(client as SupabaseClient, {
     startDate: monthStartKST.toUTC(),
     endDate: nextMonthStartKST.toUTC(),
-    limit: 15,
     page: page ?? 1,
   });
 

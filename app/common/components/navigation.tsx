@@ -131,10 +131,16 @@ export default function Navigation({
   isLoggedIn,
   hasNotifications,
   hasMessages,
+  username,
+  avatar,
+  name,
 }: {
   isLoggedIn: boolean;
   hasNotifications: boolean;
   hasMessages: boolean;
+  username: string;
+  avatar: string;
+  name: string;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -280,14 +286,19 @@ export default function Navigation({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-                <AvatarImage src="/images/boy.png" />
-                <AvatarFallback>N</AvatarFallback>
+                {avatar ? (
+                  <AvatarImage src={avatar} />
+                ) : (
+                  <AvatarFallback>{name[0]}</AvatarFallback>
+                )}
               </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
               <DropdownMenuLabel className="flex flex-col">
-                <span className="font-medium">김태영</span>
-                <span className="text-xs text-muted-foreground">@0tae</span>
+                <span className="font-medium">{name}</span>
+                <span className="text-xs text-muted-foreground">
+                  @{username}
+                </span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>

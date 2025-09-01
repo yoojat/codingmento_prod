@@ -46,3 +46,18 @@ export const getUserByUsername = async (
   }
   return data;
 };
+
+export const getUserById = async (
+  client: SupabaseClient<Database>,
+  { id }: { id: string }
+) => {
+  const { data, error } = await client
+    .from("profiles")
+    .select(`profile_id, username, name, avatar`)
+    .eq("profile_id", id)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data; // 없으면 null
+};

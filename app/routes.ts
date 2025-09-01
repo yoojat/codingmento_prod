@@ -62,6 +62,7 @@ export default [
         route("/start", "features/auth/pages/social-start-page.tsx"),
         route("/complete", "features/auth/pages/social-complete-page.tsx"),
       ]),
+      route("/logout", "features/auth/pages/logout-page.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

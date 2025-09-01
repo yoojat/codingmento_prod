@@ -44,7 +44,6 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     parsedData.page
   );
 
-  console.log(students);
   const totalPages = await getStudentsPagesByQuery(client, parsedData.query);
   return { students, totalPages, query: parsedData.query };
 };
@@ -100,7 +99,7 @@ export default function SearchPage() {
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   <span className="text-muted-foreground">특이사항:</span>
-                  <span>{student.comment || student.description || "-"}</span>
+                  <span>{student.comment || "-"}</span>
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   <span className="text-muted-foreground">학부모 성함:</span>
@@ -185,7 +184,7 @@ export default function SearchPage() {
                 >
                   <td className="px-3 py-2">
                     <Link to={profileLink} className="underline">
-                      {student.username || student.name || "-"}
+                      {student.username || "-"}
                     </Link>
                   </td>
                   <td className="px-3 py-2">
@@ -210,7 +209,7 @@ export default function SearchPage() {
                   </td>
                   <td className="px-3 py-2">
                     <Link to={profileLink} className="underline">
-                      {student.comment || student.description || "-"}
+                      {student.comment || "-"}
                     </Link>
                   </td>
                   <td className="px-3 py-2">

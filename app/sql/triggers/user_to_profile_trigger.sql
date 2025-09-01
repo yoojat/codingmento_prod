@@ -7,10 +7,15 @@ security definer
 set search_path = ''
 as $$
 begin
-    if new.raw_app_meta_data is not null then
-        if new.raw_app_meta_data ? 'provider' AND new.raw_app_meta_data ->> 'provider' = 'email' then
-            insert into public.profiles (profile_id, name, username, level)
-            values (new.id, 'Anonymous', 'mr.' || substr(md5(random()::text), 1, 8), 'code-explorer');
+    if new.raw_user_meta_data is not null then
+        if new.raw_user_meta_data ? 'provider' AND new.raw_user_meta_data ->> 'provider' = 'email' then
+            if new.raw_user_meta_data ? 'name' and new.raw_user_meta_data ? 'username' then
+                insert into public.profiles (profile_id, name, username, level)
+                values (new.id, new.raw_user_meta_data ->> 'name', new.raw_user_meta_data ->> 'username', 'code-explorer');
+            else
+                insert into public.profiles (profile_id, name, username, level)
+                values (new.id, 'Anonymous', 'mr.' || substr(md5(random()::text), 1, 8), 'code-explorer');
+            end if;
         end if;
     end if;
     return new;

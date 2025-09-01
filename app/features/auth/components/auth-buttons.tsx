@@ -9,7 +9,7 @@ export default function AuthButtons() {
       <div className="w-full flex flex-col items-center gap-2">
         <Separator className="w-full" />
         <span className="text-xs text-muted-foreground uppercase font-medium">
-          Or continue with
+          또는 계속하기
         </span>
         <Separator className="w-full" />
       </div>
@@ -17,19 +17,19 @@ export default function AuthButtons() {
         <Button variant="outline" className="w-full" asChild>
           <Link to="/auth/social/kakao/start">
             <MessageCircleIcon className="w-4 h-4" />
-            Kakao Talk
+            카카오톡으로 계속하기
           </Link>
         </Button>
         <Button variant="outline" className="w-full" asChild>
           <Link to="/auth/social/github/start">
             <GithubIcon className="w-4 h-4" />
-            Github
+            깃허브로 계속하기
           </Link>
         </Button>
         <Button variant="outline" className="w-full" asChild>
           <Link to="/auth/otp/start">
             <LockIcon className="w-4 h-4" />
-            OTP
+            OTP으로 계속하기
           </Link>
         </Button>
       </div>
