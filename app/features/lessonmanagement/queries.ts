@@ -47,19 +47,17 @@ img_url,
 next_week_plan,
 created_at,
 updated_at,
-profiles:profiles!lesson_logs_profile_id_fkey ( username )`;
+profiles:profiles!lesson_logs_profile_id_profiles_profile_id_fk!inner( username )`;
 
 export const getLessonLogsByDateRange = async (
   client: SupabaseClient,
   {
     startDate,
     endDate,
-    limit,
     page = 1,
   }: {
     startDate: DateTime;
     endDate: DateTime;
-    limit: number;
     page?: number;
   }
 ) => {

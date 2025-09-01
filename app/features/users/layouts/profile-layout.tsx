@@ -1,11 +1,11 @@
-import { Form, Link, NavLink, Outlet } from "react-router";
+import { Form, Link, Outlet, useLoaderData } from "react-router";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/common/components/ui/avatar";
 import { Badge } from "~/common/components/ui/badge";
-import { Button, buttonVariants } from "~/common/components/ui/button";
+import { Button } from "~/common/components/ui/button";
 import {
   Dialog,
   DialogDescription,
@@ -15,19 +15,35 @@ import {
   DialogTitle,
 } from "~/common/components/ui/dialog";
 import { Textarea } from "~/common/components/ui/textarea";
-import { cn } from "~/lib/utils";
+import type { Route } from "./+types/profile-layout";
+import { makeSSRClient } from "~/supa-client";
+import { getUserProfile } from "../queries";
+
+export const loader = async ({
+  request,
+  params,
+}: Route.LoaderArgs & { params: { username: string } }) => {
+  const { client } = makeSSRClient(request);
+  const profile = await getUserProfile(client, params.username);
+  console.log(profile);
+  return { profile };
+};
 
 export default function ProfileLayout() {
+  const { profile } = useLoaderData<typeof loader>();
   return (
     <div className="space-y-10">
       <div className="flex items-center gap-4">
         <Avatar className="size-40">
-          <AvatarImage src="/images/boy.png" />
-          <AvatarFallback>N</AvatarFallback>
+          {profile?.avatar ? (
+            <AvatarImage src={profile.avatar} />
+          ) : (
+            <AvatarFallback>{profile?.name[0]}</AvatarFallback>
+          )}
         </Avatar>
         <div className="space-y-5">
           <div className="flex gap-2">
-            <h1 className="text-2xl font-semibold">김태영</h1>
+            <h1 className="text-2xl font-semibold">{profile?.name}</h1>
             <Button variant="outline" asChild>
               <Link to="/my/settings">프로필 변경</Link>
             </Button>
@@ -41,7 +57,7 @@ export default function ProfileLayout() {
                 </DialogHeader>
                 <DialogDescription className="space-y-4">
                   <span className="text-sm text-muted-foreground">
-                    김태영님에게 메시지를 보내세요.
+                    {profile?.name}님에게 메시지를 보내세요.
                   </span>
                   <Form className="space-y-4">
                     <Textarea
@@ -56,8 +72,12 @@ export default function ProfileLayout() {
             </Dialog>
           </div>
           <div className="flex gap-2 items-center">
-            <span className="text-sm text-muted-foreground">@0tae</span>
-            <Badge variant={"secondary"}>코딩 탐험가</Badge>
+            {profile?.username && (
+              <span className="text-sm text-muted-foreground">
+                @{profile?.username}
+              </span>
+            )}
+            <Badge variant={"secondary"}>{profile?.level}</Badge>
           </div>
         </div>
       </div>

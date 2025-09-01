@@ -134,14 +134,14 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "lesson_logs_profile_id_fkey"
+            foreignKeyName: "lesson_logs_profile_id_profiles_profile_id_fk"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "lesson_logs_profile_id_fkey"
+            foreignKeyName: "lesson_logs_profile_id_profiles_profile_id_fk"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "students_view"
@@ -341,7 +341,7 @@ export type Database = {
           id: number
           lesson_count: number
           product_id: number | null
-          user_id: string
+          profile_id: string
         }
         Insert: {
           amount: number
@@ -349,7 +349,7 @@ export type Database = {
           id?: never
           lesson_count: number
           product_id?: number | null
-          user_id: string
+          profile_id: string
         }
         Update: {
           amount?: number
@@ -357,7 +357,7 @@ export type Database = {
           id?: never
           lesson_count?: number
           product_id?: number | null
-          user_id?: string
+          profile_id?: string
         }
         Relationships: [
           {
@@ -368,15 +368,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "payments_user_id_profiles_profile_id_fk"
-            columns: ["user_id"]
+            foreignKeyName: "payments_profile_id_profiles_profile_id_fk"
+            columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "payments_user_id_profiles_profile_id_fk"
-            columns: ["user_id"]
+            foreignKeyName: "payments_profile_id_profiles_profile_id_fk"
+            columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "students_view"
             referencedColumns: ["profile_id"]
@@ -422,7 +422,6 @@ export type Database = {
           profile_id: string
           room_id: number | null
           updated_at: string
-          userId: string | null
           username: string
         }
         Insert: {
@@ -442,7 +441,6 @@ export type Database = {
           profile_id: string
           room_id?: number | null
           updated_at?: string
-          userId?: string | null
           username: string
         }
         Update: {
@@ -462,7 +460,6 @@ export type Database = {
           profile_id?: string
           room_id?: number | null
           updated_at?: string
-          userId?: string | null
           username?: string
         }
         Relationships: [
@@ -575,7 +572,6 @@ export type Database = {
           parent_ids: string[] | null
           parent_names: string[] | null
           parent_phones: string[] | null
-          payment_amounts: number[] | null
           payment_created_ats: string[] | null
           payment_ids: number[] | null
           phone: string | null
