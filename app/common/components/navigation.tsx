@@ -287,7 +287,7 @@ export default function Navigation({
             <DropdownMenuTrigger asChild>
               <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                 {avatar ? (
-                  <AvatarImage src={avatar} />
+                  <AvatarImage className="object-cover" src={avatar} />
                 ) : (
                   <AvatarFallback>{name[0]}</AvatarFallback>
                 )}
@@ -332,13 +332,13 @@ export default function Navigation({
             variant="secondary"
             className="text-xs sm:text-sm px-2 sm:px-4"
           >
-            <Link to="/auth/login">Login</Link>
+            <Link to="/auth/login">로그인</Link>
           </Button>
           <Button
             asChild
             className="bg-[#2563EB] text-xs sm:text-sm px-2 sm:px-4"
           >
-            <Link to="/auth/join">Join</Link>
+            <Link to="/auth/join">회원가입</Link>
           </Button>
         </div>
       )}
