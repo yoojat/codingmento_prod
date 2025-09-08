@@ -54,3 +54,37 @@ export const getStudentById = async (
   }
   return data;
 };
+
+export const getOldestLessonLogWithoutStartAt = async (
+  client: SupabaseClient<Database>,
+  { profileId }: { profileId: string }
+) => {
+  let query = client
+    .from("lesson_logs")
+    .select("*")
+    .is("start_at", null)
+    .order("created_at", { ascending: true })
+    .eq("profile_id", profileId)
+    .limit(1)
+    .maybeSingle();
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+};
+
+export const getStudentsBySearch = async (
+  client: SupabaseClient<Database>,
+  { search }: { search: string }
+) => {
+  const { data, error } = await client
+    .from("students_view")
+    .select("*")
+    .or(`username.ilike.%${search}%,phone.ilike.%${search}%`);
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+};

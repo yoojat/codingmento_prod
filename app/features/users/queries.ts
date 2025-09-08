@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { redirect } from "react-router";
 import type { Database } from "~/supa-client";
 
 export const getUserProfile = async (
@@ -53,11 +54,18 @@ export const getUserById = async (
 ) => {
   const { data, error } = await client
     .from("profiles")
-    .select(`profile_id, username, name, avatar`)
+    .select(`profile_id, username, name, avatar, is_teacher`)
     .eq("profile_id", id)
     .limit(1)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
   return data; // 없으면 null
+};
+
+export const getLoggedInUserId = async (client: SupabaseClient<Database>) => {
+  const { data, error } = await client.auth.getUser();
+
+  if (error || data.user === null) throw redirect("/auth/login");
+  return data.user.id;
 };
