@@ -11,7 +11,10 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 
   if (user) {
     const profile = await getUserById(client, { id: user.id });
-    return redirect(`/users/${profile.username}`);
+    if (!profile) {
+      throw new Error("Profile not found");
+    }
+    return redirect(`/users/${encodeURIComponent(profile.username)}`);
   }
   return redirect("/auth/login");
 };

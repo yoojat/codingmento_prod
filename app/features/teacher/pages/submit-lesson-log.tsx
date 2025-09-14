@@ -10,7 +10,11 @@ import SelectPair from "~/common/components/wemake/select-pair";
 import { DAY_TABLE, TIME_TABLE } from "../constants";
 import { makeSSRClient } from "~/supa-client";
 import type { Route } from "./+types/submit-lesson-log";
-import { getLoggedInUserId, getUserById } from "~/features/users/queries";
+import {
+  getLoggedInTeacherId,
+  getLoggedInUserId,
+  getUserById,
+} from "~/features/users/queries";
 import { z } from "zod";
 import { createLessonLog } from "../mutations";
 import { getStudentsBySearch } from "../queries";
@@ -70,7 +74,7 @@ function addTwoHoursToHHmm(hhmm: string): string {
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
   const { client } = makeSSRClient(request);
-  await getLoggedInUserId(client);
+  await getLoggedInTeacherId(client);
   return {};
 };
 

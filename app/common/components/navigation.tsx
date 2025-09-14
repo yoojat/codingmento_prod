@@ -111,6 +111,7 @@ const menus = [
   },
   {
     name: "강사",
+    onlyTeacher: true,
     to: "/teacher/submit-lesson-log",
     items: [
       {
@@ -134,6 +135,7 @@ export default function Navigation({
   username,
   avatar,
   name,
+  isTeacher,
 }: {
   isLoggedIn: boolean;
   hasNotifications: boolean;
@@ -141,6 +143,7 @@ export default function Navigation({
   username: string;
   avatar: string;
   name: string;
+  isTeacher: boolean;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -217,50 +220,54 @@ export default function Navigation({
         {/* Desktop Navigation */}
         <NavigationMenu className="hidden md:flex">
           <NavigationMenuList>
-            {menus.map((menu) => (
-              <NavigationMenuItem key={menu.name}>
-                {menu.items ? (
-                  <>
-                    <Link to={menu.to}>
-                      <NavigationMenuTrigger>{menu.name}</NavigationMenuTrigger>
+            {menus.map((menu) =>
+              menu.onlyTeacher && !isTeacher ? null : (
+                <NavigationMenuItem key={menu.name}>
+                  {menu.items ? (
+                    <>
+                      <Link to={menu.to}>
+                        <NavigationMenuTrigger>
+                          {menu.name}
+                        </NavigationMenuTrigger>
+                      </Link>
+                      <NavigationMenuContent>
+                        <ul className="grid w-[600px] font-light gap-3 p-4 grid-cols-2">
+                          {menu.items?.map((item) => (
+                            <NavigationMenuItem
+                              key={item.name}
+                              className={cn([
+                                "select-none rounded-md transition-colors focus:bg-accent  hover:bg-accent",
+                                (item.to === "/products/promote" ||
+                                  item.to === "/jobs/submit") &&
+                                  "col-span-2 bg-primary/10 hover:bg-primary/20 focus:bg-primary/20",
+                              ])}
+                            >
+                              <NavigationMenuLink asChild>
+                                <Link
+                                  className="p-3 space-y-1 block leading-none no-underline outline-none"
+                                  to={item.to}
+                                >
+                                  <span className="text-sm font-medium leading-none">
+                                    {item.name}
+                                  </span>
+                                  <p className="text-sm leading-snug text-muted-foreground">
+                                    {item.description}
+                                  </p>
+                                </Link>
+                              </NavigationMenuLink>
+                            </NavigationMenuItem>
+                          ))}
+                        </ul>
+                      </NavigationMenuContent>
+                    </>
+                  ) : (
+                    <Link className={navigationMenuTriggerStyle()} to={menu.to}>
+                      {menu.name}
                     </Link>
-                    <NavigationMenuContent>
-                      <ul className="grid w-[600px] font-light gap-3 p-4 grid-cols-2">
-                        {menu.items?.map((item) => (
-                          <NavigationMenuItem
-                            key={item.name}
-                            className={cn([
-                              "select-none rounded-md transition-colors focus:bg-accent  hover:bg-accent",
-                              (item.to === "/products/promote" ||
-                                item.to === "/jobs/submit") &&
-                                "col-span-2 bg-primary/10 hover:bg-primary/20 focus:bg-primary/20",
-                            ])}
-                          >
-                            <NavigationMenuLink asChild>
-                              <Link
-                                className="p-3 space-y-1 block leading-none no-underline outline-none"
-                                to={item.to}
-                              >
-                                <span className="text-sm font-medium leading-none">
-                                  {item.name}
-                                </span>
-                                <p className="text-sm leading-snug text-muted-foreground">
-                                  {item.description}
-                                </p>
-                              </Link>
-                            </NavigationMenuLink>
-                          </NavigationMenuItem>
-                        ))}
-                      </ul>
-                    </NavigationMenuContent>
-                  </>
-                ) : (
-                  <Link className={navigationMenuTriggerStyle()} to={menu.to}>
-                    {menu.name}
-                  </Link>
-                )}
-              </NavigationMenuItem>
-            ))}
+                  )}
+                </NavigationMenuItem>
+              )
+            )}
           </NavigationMenuList>
         </NavigationMenu>
       </div>

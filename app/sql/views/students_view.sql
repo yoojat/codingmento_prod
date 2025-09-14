@@ -31,7 +31,7 @@ SELECT
                 'product_name', product.name,
                 'product_amount', product.amount
                 )
-                ORDER BY l.start_at
+                ORDER BY l.start_at DESC
             )
         FROM public.lesson_logs l
         LEFT JOIN public.payments p ON p.id = l.payment_id

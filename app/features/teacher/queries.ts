@@ -63,7 +63,7 @@ export const getOldestLessonLogWithoutStartAt = async (
     .from("lesson_logs")
     .select("*")
     .is("start_at", null)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .eq("profile_id", profileId)
     .limit(1)
     .maybeSingle();

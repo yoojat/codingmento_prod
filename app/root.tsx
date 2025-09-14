@@ -84,6 +84,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
             name={loaderData.profile?.name}
             hasNotifications={false}
             hasMessages={false}
+            isTeacher={loaderData.profile?.is_teacher ?? false}
           />
         )}
         <Outlet />

@@ -69,3 +69,19 @@ export const getLoggedInUserId = async (client: SupabaseClient<Database>) => {
   if (error || data.user === null) throw redirect("/auth/login");
   return data.user.id;
 };
+
+export const getLoggedInTeacherId = async (
+  client: SupabaseClient<Database>
+) => {
+  const { data, error } = await client.auth.getUser();
+  if (error || data.user === null) throw redirect("/auth/login");
+  const { data: user } = await client
+    .from("profiles")
+    .select("is_teacher")
+    .eq("profile_id", data.user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (!user?.is_teacher) throw redirect("/");
+  return data.user.id;
+};

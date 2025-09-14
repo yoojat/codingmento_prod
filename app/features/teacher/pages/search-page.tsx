@@ -14,6 +14,7 @@ import ProductPagination from "~/common/components/wemake/product-pagination";
 import type { Route } from "./+types/search-page";
 import { getStudentsByQuery, getStudentsPagesByQuery } from "../queries";
 import { makeSSRClient } from "~/supa-client";
+import { getLoggedInTeacherId } from "~/features/users/queries";
 // ... existing code ...
 
 export const meta: MetaFunction = () => {
@@ -33,11 +34,14 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   if (!success) {
     throw new Error("Invalid search params");
   }
+
+  const { client } = makeSSRClient(request);
+  await getLoggedInTeacherId(client);
+
   if (parsedData.query === "") {
     return { students: [], totalPages: 1, query: parsedData.query };
   }
 
-  const { client } = makeSSRClient(request);
   const students = await getStudentsByQuery(
     client,
     parsedData.query,
