@@ -32,7 +32,9 @@ export const fileType = pgEnum("file_type", ["folder", "file"]);
 
 export const files = pgTable("files", {
   id: bigint({ mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
-  user_id: integer().notNull(),
+  profile_id: uuid()
+    .references(() => profiles.profile_id, { onDelete: "cascade" })
+    .notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   type: fileType().notNull(),
   parent_id: bigint({ mode: "bigint" }),
