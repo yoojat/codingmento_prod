@@ -7,7 +7,9 @@ import {
 import type { Route } from "./+types/private-code";
 import { makeSSRClient } from "~/supa-client";
 import { getLoggedInUserId } from "~/features/users/queries";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useFetcher } from "react-router";
+// import { data } from "react-router";
 
 const ELEMENTS = [
   {
@@ -122,9 +124,15 @@ function toTreeElements(
   return roots;
 }
 
-export const loader = async ({ request }: Route.LoaderArgs) => {
+export const loader = async ({ request, params }: Route.LoaderArgs) => {
   const { client } = makeSSRClient(request);
   const userId = await getLoggedInUserId(client);
+
+  // const fileId = Number(params.fileId);
+
+  // if (!fileId || Number.isNaN(fileId)) {
+  //   throw data({ message: "Invalid file id" }, { status: 400 });
+  // }
 
   const { data: files, error: fileError } = await client
     .from("files")
@@ -142,6 +150,12 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const { elements } = loaderData as unknown as { elements: TreeViewElement[] };
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  const contentFetcher = useFetcher<{ content: string }>();
+
+  useEffect(() => {
+    if (!selectedId) return;
+    contentFetcher.load(`/lessons/private-code-content/${selectedId}`);
+  }, [selectedId]);
 
   function renderTree(nodes: TreeViewElement[]) {
     return nodes.map((node) => {
@@ -187,6 +201,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
       >
         {renderTree(elements)}
       </Tree>
+      <div>{contentFetcher.data?.content}</div>
     </div>
   );
 }
