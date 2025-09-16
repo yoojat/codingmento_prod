@@ -92,6 +92,7 @@ export default function LoginPage({ actionData }: Route.ComponentProps) {
             required
             type="email"
             placeholder="ex) wemake@example.com"
+            autoComplete="email"
           />
           {actionData && "formErrors" in actionData && (
             <p className="text-red-500 text-sm">
@@ -106,6 +107,7 @@ export default function LoginPage({ actionData }: Route.ComponentProps) {
             required
             type="password"
             placeholder="ex) 123456"
+            autoComplete="current-password"
           />
           {actionData && "formErrors" in actionData && (
             <p className="text-red-500 text-sm">

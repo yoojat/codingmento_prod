@@ -82,6 +82,11 @@ const menus = [
     to: "/lessons/playground",
     items: [
       {
+        name: "개인 코드",
+        description: "개인 코드",
+        to: "/lessons/private-code",
+      },
+      {
         name: "플레이그라운드",
         description: "플레이그라운드",
         to: "/lessons/playground",
