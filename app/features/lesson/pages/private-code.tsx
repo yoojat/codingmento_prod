@@ -9,55 +9,14 @@ import { makeSSRClient } from "~/supa-client";
 import { getLoggedInUserId } from "~/features/users/queries";
 import { useState, useEffect } from "react";
 import { useFetcher } from "react-router";
-// import { data } from "react-router";
-
-const ELEMENTS = [
-  {
-    id: "1",
-    name: "src",
-    children: [
-      {
-        id: "2",
-        name: "app",
-        children: [
-          {
-            id: "3",
-            name: "layout.tsx",
-          },
-          {
-            id: "4",
-            name: "page.tsx",
-          },
-        ],
-      },
-      {
-        id: "5",
-        name: "components",
-        children: [
-          {
-            id: "6",
-
-            name: "header.tsx",
-          },
-          {
-            id: "7",
-            name: "footer.tsx",
-          },
-        ],
-      },
-      {
-        id: "8",
-        name: "lib",
-        children: [
-          {
-            id: "9",
-            name: "utils.ts",
-          },
-        ],
-      },
-    ],
-  },
-];
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarInset,
+  SidebarTrigger,
+  SidebarHeader,
+  SidebarContent,
+} from "~/common/components/ui/sidebar";
 
 function toTreeElements(
   rows: Array<{
@@ -176,32 +135,47 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <div className="relative flex h-[300px] w-1/2 flex-col items-center justify-center overflow-hidden rounded-lg border bg-background">
-      <p>Selected ID: {selectedId}</p>
-      <Tree
-        className="overflow-hidden rounded-md bg-background p-2"
-        initialSelectedId="7"
-        initialExpandedItems={
-          [
-            // "1",
-            // "2",
-            // "3",
-            // "4",
-            // "5",
-            // "6",
-            // "7",
-            // "8",
-            // "9",
-            // "10",
-            // "11",
-          ]
-        }
-        elements={elements}
-        onSelectedChange={setSelectedId}
-      >
-        {renderTree(elements)}
-      </Tree>
-      <div>{contentFetcher.data?.content}</div>
-    </div>
+    <SidebarProvider>
+      <Sidebar>
+        <SidebarHeader>
+          <div className="py-5 px-2 text-xs font-medium">Files</div>
+        </SidebarHeader>
+        <SidebarContent>
+          <Tree
+            className="overflow-hidden rounded-md bg-background p-2"
+            initialSelectedId="7"
+            initialExpandedItems={
+              [
+                // "1",
+                // "2",
+                // "3",
+                // ...
+              ]
+            }
+            elements={elements}
+            onSelectedChange={setSelectedId}
+          >
+            {renderTree(elements)}
+          </Tree>
+        </SidebarContent>
+      </Sidebar>
+
+      <SidebarInset>
+        <div className="flex items-center gap-2 border-b p-3">
+          <SidebarTrigger />
+          <div className="truncate text-sm text-muted-foreground">
+            {selectedId ? `File #${selectedId}` : "파일을 선택하세요"}
+          </div>
+        </div>
+
+        <div className="p-4">
+          <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground">
+            {contentFetcher.state === "loading"
+              ? "Loading..."
+              : contentFetcher.data?.content ?? ""}
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
