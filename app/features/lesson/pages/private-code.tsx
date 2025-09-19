@@ -312,23 +312,29 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   function addDraftChildAtTop(
     nodes: TreeViewElement[],
     parentId: string,
-    draftId: string
+    draftId: string,
+    isFile: boolean
   ): TreeViewElement[] {
     return nodes.map((node) => {
       if (node.id === parentId) {
         const children = Array.isArray(node.children) ? node.children : [];
+        const draft: TreeViewElement = isFile
+          ? { id: draftId, name: "" }
+          : { id: draftId, name: "", children: [] as TreeViewElement[] };
         return {
           ...node,
-          children: [
-            { id: draftId, name: "", children: [] as TreeViewElement[] },
-            ...children,
-          ],
+          children: [draft, ...children],
         };
       }
       if (Array.isArray(node.children)) {
         return {
           ...node,
-          children: addDraftChildAtTop(node.children, parentId, draftId),
+          children: addDraftChildAtTop(
+            node.children,
+            parentId,
+            draftId,
+            isFile
+          ),
         };
       }
       return node;
@@ -337,7 +343,19 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
 
   function startCreateChildFolder(parentId: string) {
     const draftId = `draft-folder-${Date.now()}`;
-    setTreeElements((prev) => addDraftChildAtTop(prev, parentId, draftId));
+    setTreeElements((prev) =>
+      addDraftChildAtTop(prev, parentId, draftId, false)
+    );
+    setRenamingId(draftId);
+    setRenamingValue("");
+    setDraftParentId(parentId);
+  }
+
+  function startCreateChildFile(parentId: string) {
+    const draftId = `draft-file-${Date.now()}`;
+    setTreeElements((prev) =>
+      addDraftChildAtTop(prev, parentId, draftId, true)
+    );
     setRenamingId(draftId);
     setRenamingValue("");
     setDraftParentId(parentId);
@@ -645,7 +663,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        console.log(selectedId, "새파일");
+                        if (selectedId) startCreateChildFile(selectedId);
                         setCtxOpen(false);
                       }}
                     >
