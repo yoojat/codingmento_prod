@@ -121,6 +121,32 @@ export const action = async ({ request }: Route.ActionArgs) => {
   const userId = await getLoggedInUserId(client);
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
+  if (intent === "delete") {
+    const idRaw = formData.get("id");
+    if (!idRaw) return { ok: false, error: "Missing id" };
+    const idNum = Number(idRaw);
+
+    // First delete file_contents (FK id references files.id) then delete file
+    const { error: ce } = await client
+      .from("file_contents")
+      .delete()
+      .eq("id", idNum);
+    if (ce) {
+      // If no file_contents row existed, it's fine; continue
+      if (ce.code !== "PGRST116" /* No rows deleted */) {
+        // Ignore code check if not present; proceed anyway
+      }
+    }
+
+    const { error: fe } = await client
+      .from("files")
+      .delete()
+      .eq("id", idNum)
+      .eq("profile_id", userId)
+      .eq("type", "file");
+    if (fe) return { ok: false, error: fe.message };
+    return { ok: true, id: String(idNum) };
+  }
   if (intent === "rename") {
     const idRaw = formData.get("id");
     const nameRaw = formData.get("name");
@@ -228,6 +254,12 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const [ctxTargetId, setCtxTargetId] = useState<string | undefined>(undefined);
+  const deleteFetcher = useFetcher<{
+    ok: boolean;
+    id?: string;
+    error?: string;
+  }>();
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [treeKey, setTreeKey] = useState(0);
 
@@ -258,8 +290,13 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   useEffect(() => {
     if (!selectedId) return;
     contentFetcher.load(`/lessons/private-code-content/${selectedId}`);
-    setContent(contentFetcher.data?.content ?? "");
   }, [selectedId]);
+
+  useEffect(() => {
+    if (contentFetcher.state === "idle" && contentFetcher.data) {
+      setContent(contentFetcher.data.content ?? "");
+    }
+  }, [contentFetcher.state, contentFetcher.data]);
 
   useEffect(() => {
     function isHiddenByAria(el: HTMLElement | null): boolean {
@@ -452,6 +489,10 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     );
   }
 
+  function submitDelete(id: string) {
+    deleteFetcher.submit({ intent: "delete", id }, { method: "post" });
+  }
+
   useEffect(() => {
     if (createRootFetcher.state === "idle" && createRootFetcher.data?.ok) {
       const { id, name } = createRootFetcher.data;
@@ -484,6 +525,23 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
       }
     }
   }, [createRootFetcher.state, createRootFetcher.data, renamingId]);
+
+  useEffect(() => {
+    if (
+      deleteFetcher.state === "idle" &&
+      deleteFetcher.data?.ok &&
+      deleteFetcher.data.id
+    ) {
+      const deletedId = deleteFetcher.data.id;
+      setTreeElements((prev) => removeNodeById(prev, deletedId));
+      if (selectedId === deletedId) setSelectedId(undefined);
+      // If the open content pane is showing deleted file, clear it
+      if (contentFetcher.state === "idle" && selectedId === deletedId) {
+        setContent("");
+      }
+      if (renamingId === deletedId) setRenamingId(undefined);
+    }
+  }, [deleteFetcher.state, deleteFetcher.data]);
 
   function submitRename(id: string, name: string) {
     const trimmed = name.trim();
@@ -576,7 +634,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
               e.preventDefault();
               e.stopPropagation();
               e.nativeEvent.stopImmediatePropagation?.();
-              setSelectedId(node.id);
+              setCtxTargetId(node.id);
               setCtxTarget("folder");
               openMenuAt(e.clientX, e.clientY);
               const path = collectAncestorIds(treeElements, node.id);
@@ -596,7 +654,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
             e.preventDefault();
             e.stopPropagation();
             e.nativeEvent.stopImmediatePropagation?.();
-            setSelectedId(node.id);
+            setCtxTargetId(node.id);
             setCtxTarget("file");
             openMenuAt(e.clientX, e.clientY);
           }}
@@ -723,7 +781,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                   <>
                     <DropdownMenuItem
                       onClick={() => {
-                        if (selectedId) setPendingRenameId(selectedId);
+                        if (ctxTargetId) setPendingRenameId(ctxTargetId);
                         setCtxOpen(false);
                       }}
                     >
@@ -732,7 +790,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
 
                     <DropdownMenuItem
                       onClick={() => {
-                        if (selectedId) startCreateChildFolder(selectedId);
+                        if (ctxTargetId) startCreateChildFolder(ctxTargetId);
                         setCtxOpen(false);
                       }}
                     >
@@ -740,7 +798,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        if (selectedId) startCreateChildFile(selectedId);
+                        if (ctxTargetId) startCreateChildFile(ctxTargetId);
                         setCtxOpen(false);
                       }}
                     >
@@ -762,7 +820,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                   <>
                     <DropdownMenuItem
                       onClick={() => {
-                        if (selectedId) setPendingRenameId(selectedId);
+                        if (ctxTargetId) setPendingRenameId(ctxTargetId);
                         setCtxOpen(false);
                       }}
                     >
@@ -771,7 +829,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {
-                        console.log(selectedId, "삭제");
+                        if (ctxTargetId) submitDelete(ctxTargetId);
                         setCtxOpen(false);
                       }}
                     >
