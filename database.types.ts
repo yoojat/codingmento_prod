@@ -30,15 +30,7 @@ export type Database = {
           id?: number
           version?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "file_contents_id_files_id_fk"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "files"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       files: {
         Row: {
@@ -48,10 +40,10 @@ export type Database = {
           name: string
           parent_id: number | null
           path: string | null
+          profile_id: string
           size: number | null
           type: Database["public"]["Enums"]["file_type"]
           updated_at: string
-          user_id: number
         }
         Insert: {
           created_at?: string
@@ -60,10 +52,10 @@ export type Database = {
           name: string
           parent_id?: number | null
           path?: string | null
+          profile_id: string
           size?: number | null
           type: Database["public"]["Enums"]["file_type"]
           updated_at?: string
-          user_id: number
         }
         Update: {
           created_at?: string
@@ -72,12 +64,27 @@ export type Database = {
           name?: string
           parent_id?: number | null
           path?: string | null
+          profile_id?: string
           size?: number | null
           type?: Database["public"]["Enums"]["file_type"]
           updated_at?: string
-          user_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "files_profile_id_profiles_profile_id_fk"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "files_profile_id_profiles_profile_id_fk"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+        ]
       }
       lesson_logs: {
         Row: {

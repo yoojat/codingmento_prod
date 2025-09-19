@@ -121,26 +121,48 @@ export const action = async ({ request }: Route.ActionArgs) => {
   const userId = await getLoggedInUserId(client);
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
-  if (intent !== "rename") {
-    return { ok: false, error: "Unsupported intent" };
+  if (intent === "rename") {
+    const idRaw = formData.get("id");
+    const nameRaw = formData.get("name");
+    if (!idRaw || !nameRaw) return { ok: false, error: "Missing fields" };
+    const idNum = Number(idRaw);
+    const newName = String(nameRaw).trim();
+    if (!newName) return { ok: false, error: "Empty name" };
+
+    const { data, error } = await client
+      .from("files")
+      .update({ name: newName })
+      .eq("id", idNum)
+      .eq("profile_id", userId)
+      .select("id,name")
+      .single();
+
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, id: String(data.id), name: data.name };
   }
-  const idRaw = formData.get("id");
-  const nameRaw = formData.get("name");
-  if (!idRaw || !nameRaw) return { ok: false, error: "Missing fields" };
-  const idNum = Number(idRaw);
-  const newName = String(nameRaw).trim();
-  if (!newName) return { ok: false, error: "Empty name" };
 
-  const { data, error } = await client
-    .from("files")
-    .update({ name: newName })
-    .eq("id", idNum)
-    .eq("profile_id", userId)
-    .select("id,name")
-    .single();
+  if (intent === "create-folder") {
+    const nameRaw = formData.get("name");
+    if (!nameRaw) return { ok: false, error: "Missing name" };
+    const newName = String(nameRaw).trim();
+    if (!newName) return { ok: false, error: "Empty name" };
 
-  if (error) return { ok: false, error: error.message };
-  return { ok: true, id: String(data.id), name: data.name };
+    const { data, error } = await client
+      .from("files")
+      .insert({
+        name: newName,
+        type: "folder",
+        parent_id: null,
+        profile_id: userId,
+      })
+      .select("id,name")
+      .single();
+
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, id: String(data.id), name: data.name };
+  }
+
+  return { ok: false, error: "Unsupported intent" };
 };
 
 export default function PrivateCode({ loaderData }: Route.ComponentProps) {
@@ -222,6 +244,76 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     });
   }
 
+  function removeNodeById(
+    nodes: TreeViewElement[],
+    id: string
+  ): TreeViewElement[] {
+    return nodes
+      .map((node) =>
+        Array.isArray(node.children)
+          ? { ...node, children: removeNodeById(node.children, id) }
+          : node
+      )
+      .filter((n) => n.id !== id);
+  }
+
+  function startCreateRootFolder() {
+    const draftId = `draft-folder-${Date.now()}`;
+    setTreeElements((prev) => [
+      { id: draftId, name: "", children: [] as TreeViewElement[] },
+      ...prev,
+    ]);
+    setRenamingId(draftId);
+    setRenamingValue("");
+  }
+
+  const createRootFetcher = useFetcher<{
+    ok: boolean;
+    id?: string;
+    name?: string;
+    error?: string;
+  }>();
+
+  function submitCreateRootFolder(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      if (renamingId?.startsWith("draft-folder-")) {
+        setTreeElements((prev) => removeNodeById(prev, renamingId));
+      }
+      setRenamingId(undefined);
+      setRenamingValue("");
+      return;
+    }
+    createRootFetcher.submit(
+      { intent: "create-folder", name: trimmed },
+      { method: "post" }
+    );
+  }
+
+  useEffect(() => {
+    if (createRootFetcher.state === "idle" && createRootFetcher.data?.ok) {
+      const { id, name } = createRootFetcher.data;
+      if (id && name && renamingId?.startsWith("draft-folder-")) {
+        setTreeElements((prev) => updateNodeName(prev, renamingId, name));
+        // replace draft id with real id
+        setTreeElements((prev) =>
+          prev.map((node) =>
+            node.id === renamingId
+              ? { ...node, id }
+              : {
+                  ...node,
+                  children: Array.isArray(node.children)
+                    ? node.children!.map((c) => c)
+                    : node.children,
+                }
+          )
+        );
+        setRenamingId(undefined);
+        setRenamingValue("");
+      }
+    }
+  }, [createRootFetcher.state, createRootFetcher.data, renamingId]);
+
   function submitRename(id: string, name: string) {
     const trimmed = name.trim();
     if (!trimmed) {
@@ -257,7 +349,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
 
   function renderTree(nodes: TreeViewElement[]) {
     return nodes.map((node) => {
-      const hasChildren = node.children && node.children.length > 0;
+      const hasChildren = Array.isArray(node.children);
       if (hasChildren) {
         return (
           <Folder
@@ -275,9 +367,18 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     e.stopPropagation();
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      if (renamingId) submitRename(renamingId, renamingValue);
+                      if (renamingId?.startsWith("draft-folder-")) {
+                        submitCreateRootFolder(renamingValue);
+                      } else if (renamingId) {
+                        submitRename(renamingId, renamingValue);
+                      }
                     } else if (e.key === "Escape") {
                       e.preventDefault();
+                      if (renamingId?.startsWith("draft-folder-")) {
+                        setTreeElements((prev) =>
+                          removeNodeById(prev, renamingId)
+                        );
+                      }
                       setRenamingId(undefined);
                     }
                   }}
@@ -327,9 +428,27 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                 e.stopPropagation();
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  if (renamingId) submitRename(renamingId, renamingValue);
+                  if (renamingId?.startsWith("draft-folder-")) {
+                    const next = renamingValue.trim();
+                    if (!next) {
+                      setTreeElements((prev) =>
+                        removeNodeById(prev, renamingId)
+                      );
+                    } else {
+                      setTreeElements((prev) =>
+                        updateNodeName(prev, renamingId!, next)
+                      );
+                    }
+                    setRenamingId(undefined);
+                    setRenamingValue("");
+                  } else if (renamingId) {
+                    submitRename(renamingId, renamingValue);
+                  }
                 } else if (e.key === "Escape") {
                   e.preventDefault();
+                  if (renamingId?.startsWith("draft-folder-")) {
+                    setTreeElements((prev) => removeNodeById(prev, renamingId));
+                  }
                   setRenamingId(undefined);
                 }
               }}
@@ -392,11 +511,11 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {ctxTarget !== "file" && (
+                {ctxTarget === "empty" && (
                   <>
                     <DropdownMenuItem
                       onClick={() => {
-                        console.log(selectedId, "새폴더");
+                        startCreateRootFolder();
                         setCtxOpen(false);
                       }}
                     >
