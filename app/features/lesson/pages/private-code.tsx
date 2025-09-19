@@ -143,23 +143,30 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
   if (intent === "create-folder") {
     const nameRaw = formData.get("name");
+    const parentIdRaw = formData.get("parentId");
     if (!nameRaw) return { ok: false, error: "Missing name" };
     const newName = String(nameRaw).trim();
     if (!newName) return { ok: false, error: "Empty name" };
+    const parentId = parentIdRaw ? Number(parentIdRaw) : null;
 
     const { data, error } = await client
       .from("files")
       .insert({
         name: newName,
         type: "folder",
-        parent_id: null,
+        parent_id: parentId,
         profile_id: userId,
       })
-      .select("id,name")
+      .select("id,name,parent_id")
       .single();
 
     if (error) return { ok: false, error: error.message };
-    return { ok: true, id: String(data.id), name: data.name };
+    return {
+      ok: true,
+      id: String(data.id),
+      name: data.name,
+      parentId: data.parent_id == null ? null : String(data.parent_id),
+    };
   }
 
   return { ok: false, error: "Unsupported intent" };
@@ -267,6 +274,40 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     setRenamingValue("");
   }
 
+  function addDraftChildAtTop(
+    nodes: TreeViewElement[],
+    parentId: string,
+    draftId: string
+  ): TreeViewElement[] {
+    return nodes.map((node) => {
+      if (node.id === parentId) {
+        const children = Array.isArray(node.children) ? node.children : [];
+        return {
+          ...node,
+          children: [
+            { id: draftId, name: "", children: [] as TreeViewElement[] },
+            ...children,
+          ],
+        };
+      }
+      if (Array.isArray(node.children)) {
+        return {
+          ...node,
+          children: addDraftChildAtTop(node.children, parentId, draftId),
+        };
+      }
+      return node;
+    });
+  }
+
+  function startCreateChildFolder(parentId: string) {
+    const draftId = `draft-folder-${Date.now()}`;
+    setTreeElements((prev) => addDraftChildAtTop(prev, parentId, draftId));
+    setRenamingId(draftId);
+    setRenamingValue("");
+    setDraftParentId(parentId);
+  }
+
   const createRootFetcher = useFetcher<{
     ok: boolean;
     id?: string;
@@ -274,7 +315,9 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     error?: string;
   }>();
 
-  function submitCreateRootFolder(name: string) {
+  const [draftParentId, setDraftParentId] = useState<string | null>(null);
+
+  function submitCreateFolder(name: string) {
     const trimmed = name.trim();
     if (!trimmed) {
       if (renamingId?.startsWith("draft-folder-")) {
@@ -285,7 +328,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
       return;
     }
     createRootFetcher.submit(
-      { intent: "create-folder", name: trimmed },
+      { intent: "create-folder", name: trimmed, parentId: draftParentId ?? "" },
       { method: "post" }
     );
   }
@@ -295,7 +338,6 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
       const { id, name } = createRootFetcher.data;
       if (id && name && renamingId?.startsWith("draft-folder-")) {
         setTreeElements((prev) => updateNodeName(prev, renamingId, name));
-        // replace draft id with real id
         setTreeElements((prev) =>
           prev.map((node) =>
             node.id === renamingId
@@ -310,6 +352,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
         );
         setRenamingId(undefined);
         setRenamingValue("");
+        setDraftParentId(null);
       }
     }
   }, [createRootFetcher.state, createRootFetcher.data, renamingId]);
@@ -368,7 +411,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       if (renamingId?.startsWith("draft-folder-")) {
-                        submitCreateRootFolder(renamingValue);
+                        submitCreateFolder(renamingValue);
                       } else if (renamingId) {
                         submitRename(renamingId, renamingValue);
                       }
@@ -541,6 +584,23 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                       }}
                     >
                       이름바꾸기
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (selectedId) startCreateChildFolder(selectedId);
+                        setCtxOpen(false);
+                      }}
+                    >
+                      새폴더
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        console.log(selectedId, "새파일");
+                        setCtxOpen(false);
+                      }}
+                    >
+                      새파일
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       variant="destructive"
