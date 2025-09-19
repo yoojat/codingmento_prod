@@ -227,6 +227,24 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   );
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [treeKey, setTreeKey] = useState(0);
+
+  function collectAncestorIds(
+    nodes: TreeViewElement[],
+    targetId: string,
+    path: string[] = []
+  ): string[] {
+    for (const node of nodes) {
+      const next = [...path, node.id];
+      if (node.id === targetId) return next; // 루트→타겟 경로
+      if (Array.isArray(node.children)) {
+        const found = collectAncestorIds(node.children, targetId, next);
+        if (found.length) return found;
+      }
+    }
+    return [];
+  }
 
   const openMenuAt = useCallback((clientX: number, clientY: number) => {
     const container = containerRef.current;
@@ -525,11 +543,12 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
               e.preventDefault();
               e.stopPropagation();
               e.nativeEvent.stopImmediatePropagation?.();
-              console.log("context menu");
-              console.log(node.id);
               setSelectedId(node.id);
               setCtxTarget("folder");
               openMenuAt(e.clientX, e.clientY);
+              const path = collectAncestorIds(treeElements, node.id);
+              setExpandedIds(path);
+              setTreeKey((k) => k + 1);
             }}
           >
             {renderTree(node.children!)}
@@ -731,15 +750,8 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
 
             <Tree
               className="overflow-hidden rounded-md bg-background p-2"
-              initialSelectedId="7"
-              initialExpandedItems={
-                [
-                  // "1",
-                  // "2",
-                  // "3",
-                  // ...
-                ]
-              }
+              initialExpandedItems={expandedIds}
+              key={treeKey}
               elements={treeElements}
               onSelectedChange={setSelectedId}
             >
