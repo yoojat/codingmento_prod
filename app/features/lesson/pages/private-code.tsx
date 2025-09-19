@@ -484,6 +484,18 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                   onChange={(e) => setRenamingValue(e.target.value)}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
+                  onBlur={() => {
+                    const trimmed = renamingValue.trim();
+                    if (renamingId?.startsWith("draft-folder-")) {
+                      submitCreateFolder(renamingValue);
+                    } else if (renamingId) {
+                      if (!trimmed) {
+                        setRenamingId(undefined);
+                      } else {
+                        submitRename(renamingId, renamingValue);
+                      }
+                    }
+                  }}
                   onKeyDown={(e) => {
                     e.stopPropagation();
                     if (e.key === "Enter") {
@@ -545,6 +557,18 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
               onChange={(e) => setRenamingValue(e.target.value)}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
+              onBlur={() => {
+                const trimmed = renamingValue.trim();
+                if (renamingId?.startsWith("draft-file-")) {
+                  submitCreateFile(renamingValue);
+                } else if (renamingId) {
+                  if (!trimmed) {
+                    setRenamingId(undefined);
+                  } else {
+                    submitRename(renamingId, renamingValue);
+                  }
+                }
+              }}
               onKeyDown={(e) => {
                 e.stopPropagation();
                 if (e.key === "Enter") {
