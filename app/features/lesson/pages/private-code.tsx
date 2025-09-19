@@ -121,6 +121,59 @@ export const action = async ({ request }: Route.ActionArgs) => {
   const userId = await getLoggedInUserId(client);
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
+  if (intent === "delete-folder") {
+    const idRaw = formData.get("id");
+    if (!idRaw) return { ok: false, error: "Missing id" };
+    const rootId = Number(idRaw);
+
+    // Load all files/folders for this user to compute descendants
+    const { data: all, error: se } = await client
+      .from("files")
+      .select("id,parent_id,type,profile_id")
+      .eq("profile_id", userId);
+    if (se) return { ok: false, error: se.message };
+
+    const idToNode = new Map<
+      number,
+      { id: number; parent_id: number | null; type: string }
+    >();
+    for (const row of all ?? []) {
+      idToNode.set(Number(row.id), {
+        id: Number(row.id),
+        parent_id: row.parent_id == null ? null : Number(row.parent_id),
+        type: String(row.type),
+      });
+    }
+
+    const toDelete: number[] = [];
+    function collect(id: number) {
+      toDelete.push(id);
+      for (const n of idToNode.values()) {
+        if (n.parent_id === id) collect(n.id);
+      }
+    }
+    collect(rootId);
+
+    const fileIds = toDelete.filter((id) => idToNode.get(id)?.type === "file");
+
+    if (fileIds.length) {
+      // delete related contents first
+      const { error: ce } = await client
+        .from("file_contents")
+        .delete()
+        .in("id", fileIds);
+      if (ce) return { ok: false, error: ce.message };
+    }
+
+    const { error: fe } = await client
+      .from("files")
+      .delete()
+      .in("id", toDelete)
+      .eq("profile_id", userId);
+    if (fe) return { ok: false, error: fe.message };
+
+    return { ok: true, id: String(rootId) };
+  }
   if (intent === "delete") {
     const idRaw = formData.get("id");
     if (!idRaw) return { ok: false, error: "Missing id" };
@@ -256,6 +309,11 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const [ctxTargetId, setCtxTargetId] = useState<string | undefined>(undefined);
   const deleteFetcher = useFetcher<{
+    ok: boolean;
+    id?: string;
+    error?: string;
+  }>();
+  const deleteFolderFetcher = useFetcher<{
     ok: boolean;
     id?: string;
     error?: string;
@@ -493,6 +551,13 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     deleteFetcher.submit({ intent: "delete", id }, { method: "post" });
   }
 
+  function submitDeleteFolder(id: string) {
+    deleteFolderFetcher.submit(
+      { intent: "delete-folder", id },
+      { method: "post" }
+    );
+  }
+
   useEffect(() => {
     if (createRootFetcher.state === "idle" && createRootFetcher.data?.ok) {
       const { id, name } = createRootFetcher.data;
@@ -542,6 +607,22 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
       if (renamingId === deletedId) setRenamingId(undefined);
     }
   }, [deleteFetcher.state, deleteFetcher.data]);
+
+  useEffect(() => {
+    if (
+      deleteFolderFetcher.state === "idle" &&
+      deleteFolderFetcher.data?.ok &&
+      deleteFolderFetcher.data.id
+    ) {
+      const deletedId = deleteFolderFetcher.data.id;
+      setTreeElements((prev) => removeNodeById(prev, deletedId));
+      if (selectedId === deletedId) {
+        setSelectedId(undefined);
+        setContent("");
+      }
+      if (renamingId === deletedId) setRenamingId(undefined);
+    }
+  }, [deleteFolderFetcher.state, deleteFolderFetcher.data]);
 
   function submitRename(id: string, name: string) {
     const trimmed = name.trim();
@@ -807,7 +888,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {
-                        console.log(selectedId, "삭제");
+                        if (ctxTargetId) submitDeleteFolder(ctxTargetId);
                         setCtxOpen(false);
                       }}
                     >
