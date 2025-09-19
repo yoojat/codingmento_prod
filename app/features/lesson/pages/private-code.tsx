@@ -7,7 +7,7 @@ import {
 import type { Route } from "./+types/private-code";
 import { makeSSRClient } from "~/supa-client";
 import { getLoggedInUserId } from "~/features/users/queries";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useFetcher } from "react-router";
 import {
   SidebarProvider,
@@ -17,6 +17,16 @@ import {
   SidebarHeader,
   SidebarContent,
 } from "~/common/components/ui/sidebar";
+import CodeMirror, { keymap } from "@uiw/react-codemirror";
+import { python } from "@codemirror/lang-python";
+import { Button } from "~/common/components/ui/button";
+import { FilePlusIcon, FolderPlusIcon, SaveIcon } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/common/components/ui/dropdown-menu";
 
 function toTreeElements(
   rows: Array<{
@@ -106,57 +116,366 @@ export const loader = async ({ request, params }: Route.LoaderArgs) => {
   };
 };
 
+export const action = async ({ request }: Route.ActionArgs) => {
+  const { client } = makeSSRClient(request);
+  const userId = await getLoggedInUserId(client);
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+  if (intent !== "rename") {
+    return { ok: false, error: "Unsupported intent" };
+  }
+  const idRaw = formData.get("id");
+  const nameRaw = formData.get("name");
+  if (!idRaw || !nameRaw) return { ok: false, error: "Missing fields" };
+  const idNum = Number(idRaw);
+  const newName = String(nameRaw).trim();
+  if (!newName) return { ok: false, error: "Empty name" };
+
+  const { data, error } = await client
+    .from("files")
+    .update({ name: newName })
+    .eq("id", idNum)
+    .eq("profile_id", userId)
+    .select("id,name")
+    .single();
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, id: String(data.id), name: data.name };
+};
+
 export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const { elements } = loaderData as unknown as { elements: TreeViewElement[] };
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const contentFetcher = useFetcher<{ content: string }>();
+  const renameFetcher = useFetcher<{
+    ok: boolean;
+    id?: string;
+    name?: string;
+    error?: string;
+  }>();
+  const [content, setContent] = useState<string>("");
+  const [treeElements, setTreeElements] = useState<TreeViewElement[]>(elements);
+  const [ctxOpen, setCtxOpen] = useState(false);
+  const [ctxPos, setCtxPos] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
+  const [ctxTarget, setCtxTarget] = useState<"empty" | "folder" | "file">(
+    "empty"
+  );
+  const [renamingId, setRenamingId] = useState<string | undefined>(undefined);
+  const [renamingValue, setRenamingValue] = useState<string>("");
+  const [pendingRenameId, setPendingRenameId] = useState<string | undefined>(
+    undefined
+  );
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const openMenuAt = useCallback((clientX: number, clientY: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    setCtxPos({ x: clientX - rect.left, y: clientY - rect.top });
+    setCtxOpen(true);
+  }, []);
 
   useEffect(() => {
     if (!selectedId) return;
     contentFetcher.load(`/lessons/private-code-content/${selectedId}`);
+    setContent(contentFetcher.data?.content ?? "");
   }, [selectedId]);
+
+  function findNameById(
+    nodes: TreeViewElement[],
+    id: string
+  ): string | undefined {
+    for (const node of nodes) {
+      if (node.id === id) return node.name as string;
+      if (node.children) {
+        const res = findNameById(node.children, id);
+        if (res) return res;
+      }
+    }
+    return undefined;
+  }
+
+  useEffect(() => {
+    setTreeElements(elements);
+  }, [elements]);
+
+  function updateNodeName(
+    nodes: TreeViewElement[],
+    id: string,
+    newName: string
+  ): TreeViewElement[] {
+    return nodes.map((node) => {
+      if (node.id === id) {
+        return { ...node, name: newName };
+      }
+      if (node.children && node.children.length > 0) {
+        return {
+          ...node,
+          children: updateNodeName(node.children, id, newName),
+        };
+      }
+      return node;
+    });
+  }
+
+  function submitRename(id: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setRenamingId(undefined);
+      return;
+    }
+    renameFetcher.submit(
+      { intent: "rename", id, name: trimmed },
+      { method: "post" }
+    );
+  }
+
+  useEffect(() => {
+    if (renameFetcher.state === "idle" && renameFetcher.data?.ok) {
+      const { id, name } = renameFetcher.data;
+      if (id && name) {
+        setTreeElements((prev) => updateNodeName(prev, id, name));
+        setRenamingId(undefined);
+        setRenamingValue("");
+      }
+    }
+  }, [renameFetcher.state, renameFetcher.data]);
+
+  // Start rename only after context menu closes to avoid focus being stolen
+  useEffect(() => {
+    if (!ctxOpen && pendingRenameId) {
+      const currentName = findNameById(treeElements, pendingRenameId) ?? "";
+      setRenamingId(pendingRenameId);
+      setRenamingValue(currentName);
+      setPendingRenameId(undefined);
+    }
+  }, [ctxOpen, pendingRenameId, treeElements]);
 
   function renderTree(nodes: TreeViewElement[]) {
     return nodes.map((node) => {
       const hasChildren = node.children && node.children.length > 0;
       if (hasChildren) {
         return (
-          <Folder key={node.id} element={node.name} value={node.id}>
+          <Folder
+            key={node.id}
+            element={
+              renamingId === node.id ? (
+                <input
+                  className="h-6 rounded border px-1 text-xs"
+                  value={renamingValue}
+                  placeholder={node.name}
+                  onChange={(e) => setRenamingValue(e.target.value)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (renamingId) submitRename(renamingId, renamingValue);
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      setRenamingId(undefined);
+                    }
+                  }}
+                />
+              ) : (
+                node.name
+              )
+            }
+            value={node.id}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation?.();
+              console.log("context menu");
+              console.log(node.id);
+              setSelectedId(node.id);
+              setCtxTarget("folder");
+              openMenuAt(e.clientX, e.clientY);
+            }}
+          >
             {renderTree(node.children!)}
           </Folder>
         );
       }
       return (
-        <File key={node.id} value={node.id}>
-          <p>{node.name}</p>
+        <File
+          key={node.id}
+          value={node.id}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation?.();
+            setSelectedId(node.id);
+            setCtxTarget("file");
+            openMenuAt(e.clientX, e.clientY);
+          }}
+        >
+          {renamingId === node.id ? (
+            <input
+              className="h-6 rounded border px-1 text-xs"
+              value={renamingValue}
+              placeholder={node.name}
+              onChange={(e) => setRenamingValue(e.target.value)}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (renamingId) submitRename(renamingId, renamingValue);
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  setRenamingId(undefined);
+                }
+              }}
+            />
+          ) : (
+            <p>{node.name}</p>
+          )}
         </File>
       );
     });
   }
 
+  // Left click is intentionally ignored for context menu
+
+  const handleEmptyAreaContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const target = e.target as HTMLElement;
+      const clickedInteractive = target.closest(
+        "button, [role='button'], [data-radix-accordion-trigger]"
+      );
+      if (clickedInteractive) return;
+
+      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+      setSelectedId(undefined);
+      setCtxTarget("empty");
+      setCtxPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      setCtxOpen(true);
+    },
+    []
+  );
+
   return (
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="py-5 px-2 text-xs font-medium">Files</div>
+          <div className="pt-20 px-2 text-xs font-medium flex items-center justify-between">
+            <div>Files</div>
+          </div>
         </SidebarHeader>
-        <SidebarContent>
-          <Tree
-            className="overflow-hidden rounded-md bg-background p-2"
-            initialSelectedId="7"
-            initialExpandedItems={
-              [
-                // "1",
-                // "2",
-                // "3",
-                // ...
-              ]
-            }
-            elements={elements}
-            onSelectedChange={setSelectedId}
+        <SidebarContent className="h-full">
+          <div
+            ref={containerRef}
+            className="relative h-full"
+            onContextMenu={handleEmptyAreaContextMenu}
           >
-            {renderTree(elements)}
-          </Tree>
+            <DropdownMenu open={ctxOpen} onOpenChange={setCtxOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  ref={triggerRef}
+                  style={{
+                    position: "absolute",
+                    left: ctxPos.x,
+                    top: ctxPos.y,
+                    width: 1,
+                    height: 1,
+                    opacity: 0,
+                    pointerEvents: ctxOpen ? "auto" : "none",
+                  }}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {ctxTarget !== "file" && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        console.log(selectedId, "새폴더");
+                        setCtxOpen(false);
+                      }}
+                    >
+                      새폴더
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        console.log(selectedId, "새파일");
+                        setCtxOpen(false);
+                      }}
+                    >
+                      새파일
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {ctxTarget === "folder" && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (selectedId) setPendingRenameId(selectedId);
+                        setCtxOpen(false);
+                      }}
+                    >
+                      이름바꾸기
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        console.log(selectedId, "삭제");
+                        setCtxOpen(false);
+                      }}
+                    >
+                      삭제
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {ctxTarget === "file" && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (selectedId) setPendingRenameId(selectedId);
+                        setCtxOpen(false);
+                      }}
+                    >
+                      이름바꾸기
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        console.log(selectedId, "삭제");
+                        setCtxOpen(false);
+                      }}
+                    >
+                      삭제
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Tree
+              className="overflow-hidden rounded-md bg-background p-2"
+              initialSelectedId="7"
+              initialExpandedItems={
+                [
+                  // "1",
+                  // "2",
+                  // "3",
+                  // ...
+                ]
+              }
+              elements={treeElements}
+              onSelectedChange={setSelectedId}
+            >
+              {renderTree(treeElements)}
+            </Tree>
+          </div>
         </SidebarContent>
       </Sidebar>
 
@@ -172,7 +491,22 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
           <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground">
             {contentFetcher.state === "loading"
               ? "Loading..."
-              : contentFetcher.data?.content ?? ""}
+              : contentFetcher.data?.content && (
+                  <CodeMirror
+                    value={contentFetcher.data.content}
+                    height="400px"
+                    onChange={(value) => setContent(value)}
+                    basicSetup={{
+                      lineNumbers: true,
+                      highlightActiveLine: true,
+                      highlightActiveLineGutter: true,
+                      indentOnInput: true,
+                    }}
+                    theme="light"
+                    style={{ border: "1px solid #ddd" }}
+                    extensions={[python()]}
+                  />
+                )}
           </div>
         </div>
       </SidebarInset>

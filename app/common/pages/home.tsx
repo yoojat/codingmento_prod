@@ -161,7 +161,7 @@ export default function HomePage() {
         <div className="flex flex-col md:flex-row gap-8 items-start">
           <img
             className="w-full max-w-lg rounded shadow"
-            src="images/0tae.jpg"
+            src="images/taeyoung.jpg"
             alt="강사 사진"
           />
           <div>
@@ -196,6 +196,11 @@ export default function HomePage() {
               <br />• 코딩활용능력 1급 (정보통신기술자격검정)
               <br />• AI Certificate for Everyone – Junior, Basic, Associate,
               <br />• AI FUTURE 시리즈 1급, 2급, 3급 (KT/한국경제신문)
+            </p>
+            <p className="mb-2">
+              📚 <b>학력</b>
+              <br />• 부산대학교 환경공학과 졸업
+              <br />• 부산대학교 데이터사이언스 대학원 석사 과정 재학 중
             </p>
             <p className="mb-2">
               🧡 <b>학부모님께 드리는 약속</b>
@@ -331,7 +336,7 @@ export default function HomePage() {
               </h4>
               <ul className="space-y-2 text-sm">
                 <li>• 부산대학교 환경공학과 졸업</li>
-                <li>• 부산대학교 데이터사이언스 대학원 재학 중</li>
+                <li>• 부산대학교 데이터사이언스 대학원 석사 과정 재학 중</li>
               </ul>
             </div>
             <div>

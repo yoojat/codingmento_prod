@@ -220,7 +220,7 @@ interface FolderComponentProps
 
 type FolderProps = {
   expandedItems?: string[];
-  element: string;
+  element: React.ReactNode;
   isSelectable?: boolean;
   isSelect?: boolean;
 } & FolderComponentProps;
