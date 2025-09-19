@@ -227,6 +227,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   );
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const renameInputRef = useRef<HTMLInputElement | null>(null);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [treeKey, setTreeKey] = useState(0);
 
@@ -259,6 +260,37 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     contentFetcher.load(`/lessons/private-code-content/${selectedId}`);
     setContent(contentFetcher.data?.content ?? "");
   }, [selectedId]);
+
+  useEffect(() => {
+    function isHiddenByAria(el: HTMLElement | null): boolean {
+      let cur: HTMLElement | null = el;
+      while (cur) {
+        const ariaHidden = cur.getAttribute("aria-hidden");
+        const dataAriaHidden = cur.getAttribute("data-aria-hidden");
+        if (ariaHidden === "true" || dataAriaHidden === "true") return true;
+        cur = cur.parentElement;
+      }
+      return false;
+    }
+
+    function focusWhenVisible(retries = 10) {
+      if (!renamingId || ctxOpen) return;
+      const el = renameInputRef.current;
+      if (!el) {
+        if (retries > 0)
+          requestAnimationFrame(() => focusWhenVisible(retries - 1));
+        return;
+      }
+      if (isHiddenByAria(el)) {
+        if (retries > 0) setTimeout(() => focusWhenVisible(retries - 1), 50);
+        return;
+      }
+      el.focus();
+      el.select?.();
+    }
+
+    if (renamingId && !ctxOpen) focusWhenVisible();
+  }, [renamingId, ctxOpen]);
 
   function findNameById(
     nodes: TreeViewElement[],
@@ -316,15 +348,15 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
       { id: draftId, name: "", children: [] as TreeViewElement[] },
       ...prev,
     ]);
-    setRenamingId(draftId);
     setRenamingValue("");
+    setTimeout(() => setRenamingId(draftId), 0);
   }
 
   function startCreateRootFileBottom() {
     const draftId = `draft-file-${Date.now()}`;
     setTreeElements((prev) => [...prev, { id: draftId, name: "" }]);
-    setRenamingId(draftId);
     setRenamingValue("");
+    setTimeout(() => setRenamingId(draftId), 0);
   }
 
   function addDraftChildAtTop(
@@ -364,9 +396,9 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     setTreeElements((prev) =>
       addDraftChildAtTop(prev, parentId, draftId, false)
     );
-    setRenamingId(draftId);
     setRenamingValue("");
     setDraftParentId(parentId);
+    setTimeout(() => setRenamingId(draftId), 0);
   }
 
   function startCreateChildFile(parentId: string) {
@@ -374,9 +406,9 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     setTreeElements((prev) =>
       addDraftChildAtTop(prev, parentId, draftId, true)
     );
-    setRenamingId(draftId);
     setRenamingValue("");
     setDraftParentId(parentId);
+    setTimeout(() => setRenamingId(draftId), 0);
   }
 
   const createRootFetcher = useFetcher<{
@@ -496,6 +528,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
             element={
               renamingId === node.id ? (
                 <input
+                  ref={renameInputRef}
                   className="h-6 rounded border px-1 text-xs"
                   value={renamingValue}
                   placeholder={node.name}
@@ -570,6 +603,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
         >
           {renamingId === node.id ? (
             <input
+              ref={renameInputRef}
               className="h-6 rounded border px-1 text-xs"
               value={renamingValue}
               placeholder={node.name}
