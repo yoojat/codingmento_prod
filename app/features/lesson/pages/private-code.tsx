@@ -239,7 +239,6 @@ export const action = async ({ request }: Route.ActionArgs) => {
       .single();
 
     if (error) return { ok: false, error: error.message };
-    console.log(data);
     return {
       ok: true,
       id: String(data.id),
@@ -436,11 +435,23 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
       )
       .filter((n) => n.id !== id);
   }
+  // function startCreateChildFolder(parentId: string) {
+  //   const draftId = `draft-folder-${Date.now()}`;
+  //   setTreeElements((prev) => {
+  //     const sample = addDraftChildAtTop(prev, parentId, draftId, false);
+  //     return sample;
+  //   });
+  //   setRenamingValue("");
+  //   setDraftParentId(parentId);
+  //   setPendingRenameId(undefined); // 충돌 방지
+  //   setTimeout(() => setRenamingId(draftId), 0);
+  // }
 
+  // FIXME
   function startCreateRootFolder() {
     const draftId = `draft-folder-${Date.now()}`;
     setTreeElements((prev) => [
-      { id: draftId, name: "", children: [] as TreeViewElement[] },
+      { id: draftId, name: "zzzz", children: [] as TreeViewElement[] },
       ...prev,
     ]);
     setRenamingValue("");
@@ -466,10 +477,11 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
         const draft: TreeViewElement = isFile
           ? { id: draftId, name: "" }
           : { id: draftId, name: "", children: [] as TreeViewElement[] };
-        return {
+        const result = {
           ...node,
           children: [draft, ...children],
         };
+        return result;
       }
       if (Array.isArray(node.children)) {
         return {
@@ -488,11 +500,13 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
 
   function startCreateChildFolder(parentId: string) {
     const draftId = `draft-folder-${Date.now()}`;
-    setTreeElements((prev) =>
-      addDraftChildAtTop(prev, parentId, draftId, false)
-    );
+    setTreeElements((prev) => {
+      const sample = addDraftChildAtTop(prev, parentId, draftId, false);
+      return sample;
+    });
     setRenamingValue("");
     setDraftParentId(parentId);
+    setPendingRenameId(undefined); // 충돌 방지
     setTimeout(() => setRenamingId(draftId), 0);
   }
 
@@ -503,6 +517,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     );
     setRenamingValue("");
     setDraftParentId(parentId);
+    setPendingRenameId(undefined); // 충돌 방지
     setTimeout(() => setRenamingId(draftId), 0);
   }
 
@@ -523,6 +538,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
       }
       setRenamingId(undefined);
       setRenamingValue("");
+      setPendingRenameId(undefined);
       return;
     }
     createRootFetcher.submit(
@@ -562,22 +578,28 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     if (createRootFetcher.state === "idle" && createRootFetcher.data?.ok) {
       const { id, name } = createRootFetcher.data;
       if (id && name && renamingId?.startsWith("draft-folder-")) {
-        setTreeElements((prev) => updateNodeName(prev, renamingId, name));
-        setTreeElements((prev) =>
-          prev.map((node) =>
-            node.id === renamingId
-              ? { ...node, id }
-              : {
-                  ...node,
-                  children: Array.isArray(node.children)
-                    ? node.children!.map((c) => c)
-                    : node.children,
-                }
-          )
-        );
-        setRenamingId(undefined);
+        setTreeElements((prev) => {
+          const result = updateNodeName(prev, renamingId, name);
+          return result;
+        });
+        // setTreeElements((prev) => {
+        //   console.log({ renamingId });
+        //   const result = prev.map((node) =>
+        //     node.id === renamingId
+        //       ? { ...node, id }
+        //       : {
+        //           ...node,
+        //           children: Array.isArray(node.children)
+        //             ? node.children!.map((c) => c)
+        //             : node.children,
+        //         }
+        //   );
+        //   console.log("result2", result);
+        //   return result;
+        // });
+        // setRenamingId(undefined);
         setRenamingValue("");
-        setDraftParentId(null);
+        // setDraftParentId(null);
       }
       if (id && name && renamingId?.startsWith("draft-file-")) {
         setTreeElements((prev) =>
@@ -585,7 +607,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
             node.id === renamingId ? { ...node, id, name } : node
           )
         );
-        setRenamingId(undefined);
+        // setRenamingId(undefined);
         setRenamingValue("");
       }
     }
@@ -670,7 +692,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                   ref={renameInputRef}
                   className="h-6 rounded border px-1 text-xs"
                   value={renamingValue}
-                  placeholder={node.name}
+                  placeholder={"폴더이름을 작성해주세요"}
                   onChange={(e) => setRenamingValue(e.target.value)}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
@@ -745,7 +767,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
               ref={renameInputRef}
               className="h-6 rounded border px-1 text-xs"
               value={renamingValue}
-              placeholder={node.name}
+              placeholder={"파일이름을 작성해주세요"}
               onChange={(e) => setRenamingValue(e.target.value)}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
