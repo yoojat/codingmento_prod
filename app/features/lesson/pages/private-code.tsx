@@ -141,6 +141,34 @@ export const action = async ({ request }: Route.ActionArgs) => {
     return { ok: true, id: String(data.id), name: data.name };
   }
 
+  if (intent === "create-file") {
+    const nameRaw = formData.get("name");
+    const parentIdRaw = formData.get("parentId");
+    if (!nameRaw) return { ok: false, error: "Missing name" };
+    const newName = String(nameRaw).trim();
+    if (!newName) return { ok: false, error: "Empty name" };
+    const parentId = parentIdRaw ? Number(parentIdRaw) : null;
+    const { data, error } = await client
+      .from("files")
+      .insert({
+        name: newName,
+        type: "file",
+        parent_id: parentId,
+        profile_id: userId,
+      })
+      .select("id,name,parent_id")
+      .single();
+
+    if (error) return { ok: false, error: error.message };
+    console.log(data);
+    return {
+      ok: true,
+      id: String(data.id),
+      name: data.name,
+      parentId: data.parent_id == null ? null : String(data.parent_id),
+    };
+  }
+
   if (intent === "create-folder") {
     const nameRaw = formData.get("name");
     const parentIdRaw = formData.get("parentId");
@@ -274,6 +302,13 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     setRenamingValue("");
   }
 
+  function startCreateRootFileBottom() {
+    const draftId = `draft-file-${Date.now()}`;
+    setTreeElements((prev) => [...prev, { id: draftId, name: "" }]);
+    setRenamingId(draftId);
+    setRenamingValue("");
+  }
+
   function addDraftChildAtTop(
     nodes: TreeViewElement[],
     parentId: string,
@@ -333,6 +368,22 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     );
   }
 
+  function submitCreateFile(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      if (renamingId?.startsWith("draft-file-")) {
+        setTreeElements((prev) => removeNodeById(prev, renamingId));
+      }
+      setRenamingId(undefined);
+      setRenamingValue("");
+      return;
+    }
+    createRootFetcher.submit(
+      { intent: "create-file", name: trimmed, parentId: draftParentId ?? "" },
+      { method: "post" }
+    );
+  }
+
   useEffect(() => {
     if (createRootFetcher.state === "idle" && createRootFetcher.data?.ok) {
       const { id, name } = createRootFetcher.data;
@@ -353,6 +404,15 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
         setRenamingId(undefined);
         setRenamingValue("");
         setDraftParentId(null);
+      }
+      if (id && name && renamingId?.startsWith("draft-file-")) {
+        setTreeElements((prev) =>
+          prev.map((node) =>
+            node.id === renamingId ? { ...node, id, name } : node
+          )
+        );
+        setRenamingId(undefined);
+        setRenamingValue("");
       }
     }
   }, [createRootFetcher.state, createRootFetcher.data, renamingId]);
@@ -471,25 +531,14 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                 e.stopPropagation();
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  if (renamingId?.startsWith("draft-folder-")) {
-                    const next = renamingValue.trim();
-                    if (!next) {
-                      setTreeElements((prev) =>
-                        removeNodeById(prev, renamingId)
-                      );
-                    } else {
-                      setTreeElements((prev) =>
-                        updateNodeName(prev, renamingId!, next)
-                      );
-                    }
-                    setRenamingId(undefined);
-                    setRenamingValue("");
+                  if (renamingId?.startsWith("draft-file-")) {
+                    submitCreateFile(renamingValue);
                   } else if (renamingId) {
                     submitRename(renamingId, renamingValue);
                   }
                 } else if (e.key === "Escape") {
                   e.preventDefault();
-                  if (renamingId?.startsWith("draft-folder-")) {
+                  if (renamingId?.startsWith("draft-file-")) {
                     setTreeElements((prev) => removeNodeById(prev, renamingId));
                   }
                   setRenamingId(undefined);
@@ -566,7 +615,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        console.log(selectedId, "새파일");
+                        startCreateRootFileBottom();
                         setCtxOpen(false);
                       }}
                     >
