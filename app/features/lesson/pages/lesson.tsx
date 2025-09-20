@@ -36,6 +36,8 @@ import { getLoggedInUserId } from "~/features/users/queries";
 import { makeSSRClient } from "~/supa-client";
 import type { Route } from "./+types/lesson";
 import { RenderTree } from "../components/render-tree";
+import { useFetcher } from "react-router";
+import { handleFileAction } from "~/features/lesson/actions";
 
 interface UserState {
   nickname: string;
@@ -59,6 +61,13 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   return { elements: toTreeElements(files ?? []) };
 };
 
+export const action = async ({ request }: Route.ActionArgs) => {
+  const { client } = makeSSRClient(request);
+  const userId = await getLoggedInUserId(client);
+  const formData = await request.formData();
+  return handleFileAction(client, userId, formData);
+};
+
 export default function Lesson({ loaderData }: Route.ComponentProps) {
   const socket = useSocket();
 
@@ -75,7 +84,19 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
   // 파일
   const { elements } = loaderData as unknown as { elements: TreeViewElement[] };
   const fileTree = useFileTree(elements);
-
+  const [saveInfo, setSaveInfo] = useState<string>("");
+  const [content, setContent] = useState<string>("");
+  const [selectedName, setSelectedName] = useState<string>("");
+  const saveFetcher = useFetcher<{ ok: boolean; error?: string }>();
+  const contentFetcher = useFetcher<{ content: string; name: string }>();
+  const {
+    loaded,
+    error: skError,
+    output,
+    run,
+    stop,
+    canvasRef,
+  } = useSkulptRunner();
   // 미디어 상태 (VideoControls로 내부화)
   const [chatMessages, setChatMessages] = useState<
     Array<{
@@ -101,9 +122,6 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
   const myFaceRef = useRef<HTMLVideoElement>(null);
   const myStreamRef = useRef<MediaStream | null>(null);
   const roomNameRef = useRef<string>("");
-
-  // FilesProvider hooks
-  const { getContent, setContent, subscribe } = useFiles();
 
   // Local-only file explorer state for my editor
   const initialTree: FileNode[] = useMemo(
@@ -150,7 +168,6 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
   const [activeFilePath, setActiveFilePath] = useState<string | null>(
     "/project/main.py"
   );
-  const [saveInfo, setSaveInfo] = useState<string>("");
 
   // 다중 연결 관리 훅
   const {
@@ -249,45 +266,98 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
     };
   }, [cleanupAllConnections]);
 
-  // Load selected file into my editor content only for myUserId (via FilesProvider)
+  // 파일 트리 동기화
   useEffect(() => {
-    if (!activeFilePath) return;
-    const content = getContent(activeFilePath);
-    setEditorContents((previous) => {
-      const copy = new Map(previous);
-      copy.set(myUserId, content);
-      return copy;
-    });
-    const unsub = subscribe(activeFilePath, (next: string) => {
-      setEditorContents((previous) => {
-        const copy = new Map(previous);
-        copy.set(myUserId, next);
-        return copy;
-      });
-    });
-    return unsub;
-  }, [activeFilePath, myUserId, getContent, subscribe]);
+    fileTree.setTreeElements(elements);
+  }, [elements]);
 
-  const handleSaveMyFile = useCallback(() => {
-    if (!activeFilePath) return;
-    const content = editorContents.get(myUserId) ?? "";
-    setContent(activeFilePath, content);
-    setSaveInfo(`${activeFilePath} 저장 완료`);
-    setTimeout(() => setSaveInfo(""), 1500);
-  }, [activeFilePath, editorContents, myUserId, setContent]);
+  // 파일 선택 시 내용 로드 및 런타임 출력 초기화
+  useEffect(() => {
+    if (!fileTree.selectedId) return;
+    contentFetcher.load(`/lessons/private-code-content/${fileTree.selectedId}`);
+    fileTree.setRenamingId(undefined);
+    fileTree.setRenamingValue("");
+    try {
+      const pre = document.querySelector("pre");
+      if (pre) pre.textContent = "";
+    } catch {}
+    if (canvasRef?.current) {
+      canvasRef.current.innerHTML = "";
+    }
+  }, [fileTree.selectedId]);
 
-  const myEditorHeader = (
-    <div className="flex items-center gap-2 p-2 bg-white border-b">
-      <SidebarTrigger />
-      <div className="text-sm text-muted-foreground truncate">
-        {activeFilePath ?? "새 파일"}
-      </div>
-      <div className="flex-1" />
-      <Button size="sm" variant="secondary" onClick={handleSaveMyFile}>
-        <SaveIcon className="w-4 h-4 mr-1" /> 저장
-      </Button>
-    </div>
-  );
+  // 내용 로드 완료 시 에디터 상태 반영
+  useEffect(() => {
+    if (contentFetcher.state === "idle" && contentFetcher.data) {
+      setContent(contentFetcher.data.content ?? "");
+      setSelectedName(contentFetcher.data.name ?? "");
+    }
+  }, [contentFetcher.state, contentFetcher.data]);
+
+  // 저장 제출 및 표시
+  function submitSave() {
+    if (!fileTree.selectedId) return;
+    saveFetcher.submit(
+      { intent: "save-content", id: fileTree.selectedId, content },
+      { method: "post" }
+    );
+  }
+  const isSaving = saveFetcher.state !== "idle";
+  useEffect(() => {
+    if (saveFetcher.state === "idle" && saveFetcher.data) {
+      if (saveFetcher.data.ok) {
+        setSaveInfo("저장 완료");
+      } else {
+        setSaveInfo(
+          `저장 실패${
+            saveFetcher.data.error ? `: ${saveFetcher.data.error}` : ""
+          }`
+        );
+      }
+      const t = setTimeout(() => setSaveInfo(""), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [saveFetcher.state, saveFetcher.data]);
+
+  // Load selected file into my editor content only for myUserId (via FilesProvider)
+  // useEffect(() => {
+  //   if (!activeFilePath) return;
+  //   const content = getContent(activeFilePath);
+  //   setEditorContents((previous) => {
+  //     const copy = new Map(previous);
+  //     copy.set(myUserId, content);
+  //     return copy;
+  //   });
+  //   const unsub = subscribe(activeFilePath, (next: string) => {
+  //     setEditorContents((previous) => {
+  //       const copy = new Map(previous);
+  //       copy.set(myUserId, next);
+  //       return copy;
+  //     });
+  //   });
+  //   return unsub;
+  // }, [activeFilePath, myUserId, getContent, subscribe]);
+
+  // const handleSaveMyFile = useCallback(() => {
+  //   if (!activeFilePath) return;
+  //   const content = editorContents.get(myUserId) ?? "";
+  //   setContent(activeFilePath, content);
+  //   setSaveInfo(`${activeFilePath} 저장 완료`);
+  //   setTimeout(() => setSaveInfo(""), 1500);
+  // }, [activeFilePath, editorContents, myUserId, setContent]);
+
+  // const myEditorHeader = (
+  //   <div className="flex items-center gap-2 p-2 bg-white border-b">
+  //     <SidebarTrigger />
+  //     <div className="text-sm text-muted-foreground truncate">
+  //       {activeFilePath ?? "새 파일"}
+  //     </div>
+  //     <div className="flex-1" />
+  //     <Button size="sm" variant="secondary" onClick={handleSaveMyFile}>
+  //       <SaveIcon className="w-4 h-4 mr-1" /> 저장
+  //     </Button>
+  //   </div>
+  // );
 
   return (
     <SidebarProvider>
@@ -330,6 +400,97 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
       </Sidebar>
       <SidebarInset>
         <div className="p-6 max-w-none w-full">
+          <div className="flex items-center gap-2 border-b p-3">
+            <SidebarTrigger />
+            <div className="truncate text-sm text-muted-foreground">
+              {selectedName ? `${selectedName}` : "파일을 선택하세요"}
+            </div>
+            <div className="flex-1" />
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={submitSave}
+              disabled={!fileTree.selectedId || isSaving}
+            >
+              {isSaving ? "저장 중…" : "저장"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => run(content)}
+              disabled={!loaded || !!skError || !fileTree.selectedId}
+            >
+              실행
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => stop()}
+              disabled={!fileTree.selectedId}
+            >
+              정지
+            </Button>
+          </div>
+
+          <div className="p-4">
+            <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                {contentFetcher.state === "loading" ? (
+                  "Loading..."
+                ) : (
+                  <div>
+                    <h4 className="mb-1 text-xs font-semibold text-gray-700">
+                      {saveInfo ? (
+                        <div className="mb-2 text-xs text-green-600">
+                          {saveInfo}
+                        </div>
+                      ) : (
+                        "editor"
+                      )}
+                    </h4>
+                    <CodeMirror
+                      value={contentFetcher.data?.content ?? ""}
+                      height="420px"
+                      onChange={(value) => setContent(value)}
+                      basicSetup={{
+                        lineNumbers: true,
+                        highlightActiveLine: true,
+                        highlightActiveLineGutter: true,
+                        indentOnInput: true,
+                      }}
+                      theme="light"
+                      style={{ border: "1px solid #ddd" }}
+                      extensions={[python()]}
+                    />
+                  </div>
+                )}
+                <div className="mt-3">
+                  <h4 className="mb-1 text-xs font-semibold text-gray-700">
+                    콘솔
+                  </h4>
+                  <pre className="p-2 bg-gray-100 rounded text-xs overflow-auto max-h-48 md:max-h-80">
+                    {output}
+                  </pre>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                {!loaded && !skError && (
+                  <span className="text-xs text-gray-500">Skulpt 로딩 중…</span>
+                )}
+                {skError && (
+                  <span className="text-xs text-red-600">Skulpt 로딩 실패</span>
+                )}
+                <div>
+                  <h4 className="mb-1 text-xs font-semibold text-gray-700">
+                    Turtle
+                  </h4>
+                  <div
+                    ref={canvasRef}
+                    className="w-full h-[220px] md:h-[500px] border border-gray-200 rounded"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
           {!isWelcomeHidden && (
             <div className="space-y-4">
               <h2 className="text-2xl font-bold">다중 사용자 영상 채팅</h2>
@@ -385,7 +546,7 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                 {/* 사용자별 에디터 그리드: 최대 2열, 가로 폭 최대 사용 */}
                 <div className="grid gap-0 md:gap-0 grid-cols-1 md:grid-cols-2 w-full">
                   {/* 내 에디터 */}
-                  <UserEditor
+                  {/* <UserEditor
                     key={myUserId}
                     userId={myUserId}
                     nickname={myNickname || "나"}
@@ -410,7 +571,7 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                     }}
                     showIdSuffix={isHydrated}
                     header={myEditorHeader}
-                  />
+                  /> */}
 
                   {/* 원격 사용자 에디터들 */}
                   {Array.from(connectedUsers.entries()).map(([uid, u]) => (
@@ -546,8 +707,7 @@ function UserEditor({
         </div>
         <CodeMirror
           value={value}
-          height="280px"
-          extensions={[runKeymap, python(), defaultKeymapExt, historyKeymapExt]}
+          height="420px"
           onChange={(v) => onChange?.(v)}
           readOnly={!!readOnly}
           basicSetup={{
@@ -555,14 +715,15 @@ function UserEditor({
             highlightActiveLine: true,
             highlightActiveLineGutter: true,
             indentOnInput: true,
-            bracketMatching: true,
-            foldGutter: true,
-            defaultKeymap: false,
-            history: true,
-            allowMultipleSelections: true,
+            // bracketMatching: true,
+            // foldGutter: true,
+            // defaultKeymap: false,
+            // history: true,
+            // allowMultipleSelections: true,
           }}
           theme="light"
           style={{ border: "1px solid #ddd" }}
+          extensions={[python()]}
         />
         <div className="flex items-center gap-2">
           <Button
