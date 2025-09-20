@@ -1,18 +1,9 @@
 import {
-  File,
-  Folder,
   Tree,
   type TreeViewElement,
 } from "~/common/components/magicui/file-tree";
 import RenderTree from "../components/render-tree";
-import {
-  toTreeElements,
-  findNameById,
-  updateNodeName,
-  removeNodeById,
-  addDraftChildAtTop,
-  collectAncestorIds,
-} from "../helpers/file-tree";
+import { toTreeElements } from "../helpers/file-tree";
 import type { Route } from "./+types/private-code";
 import { makeSSRClient } from "~/supa-client";
 import { getLoggedInUserId } from "~/features/users/queries";
@@ -29,7 +20,7 @@ import {
 import CodeMirror, { keymap } from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 import { Button } from "~/common/components/ui/button";
-import { FilePlusIcon, FolderPlusIcon, SaveIcon } from "lucide-react";
+import { SaveIcon } from "lucide-react";
 import { useSkulptRunner } from "~/hooks/use-skulpt-runner";
 import {
   DropdownMenu,
@@ -37,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/common/components/ui/dropdown-menu";
+import { useFileTree } from "../hooks/use-file-tree";
 
 // helpers moved to ../helpers/file-tree
 
@@ -241,45 +233,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
 export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const { elements } = loaderData as unknown as { elements: TreeViewElement[] };
-  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const contentFetcher = useFetcher<{ content: string; name: string }>();
-  const renameFetcher = useFetcher<{
-    ok: boolean;
-    id?: string;
-    name?: string;
-    error?: string;
-  }>();
   const [content, setContent] = useState<string>("");
-  const [treeElements, setTreeElements] = useState<TreeViewElement[]>(elements);
-  const [ctxOpen, setCtxOpen] = useState(false);
-  const [ctxPos, setCtxPos] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
-  });
-  const [ctxTarget, setCtxTarget] = useState<"empty" | "folder" | "file">(
-    "empty"
-  );
-  const [renamingId, setRenamingId] = useState<string | undefined>(undefined);
-  const [renamingValue, setRenamingValue] = useState<string>("");
-  const [pendingRenameId, setPendingRenameId] = useState<string | undefined>(
-    undefined
-  );
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  const [ctxTargetId, setCtxTargetId] = useState<string | undefined>(undefined);
-  const deleteFetcher = useFetcher<{
-    ok: boolean;
-    id?: string;
-    error?: string;
-  }>();
-  const deleteFolderFetcher = useFetcher<{
-    ok: boolean;
-    id?: string;
-    error?: string;
-  }>();
-  const [expandedIds, setExpandedIds] = useState<string[]>([]);
-  const [treeKey, setTreeKey] = useState(0);
+  const fileTree = useFileTree(elements);
   const [selectedName, setSelectedName] = useState<string>("");
   const saveFetcher = useFetcher<{ ok: boolean; error?: string }>();
   const [saveInfo, setSaveInfo] = useState<string>("");
@@ -292,22 +248,14 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     canvasRef,
   } = useSkulptRunner();
 
-  // collectAncestorIds imported from helpers
-
-  const openMenuAt = useCallback((clientX: number, clientY: number) => {
-    const container = containerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    setCtxPos({ x: clientX - rect.left, y: clientY - rect.top });
-    setCtxOpen(true);
-  }, []);
+  // file tree logic is encapsulated in useFileTree
 
   useEffect(() => {
-    if (!selectedId) return;
-    contentFetcher.load(`/lessons/private-code-content/${selectedId}`);
+    if (!fileTree.selectedId) return;
+    contentFetcher.load(`/lessons/private-code-content/${fileTree.selectedId}`);
     // 파일 전환 시 실행 결과 초기화
-    setRenamingId(undefined);
-    setRenamingValue("");
+    fileTree.setRenamingId(undefined);
+    fileTree.setRenamingValue("");
     // 콘솔 출력은 run 호출 전에만 세팅되므로 여기서는 UI만 초기화
     try {
       const pre = document.querySelector("pre");
@@ -316,7 +264,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     if (canvasRef?.current) {
       canvasRef.current.innerHTML = "";
     }
-  }, [selectedId]);
+  }, [fileTree.selectedId]);
 
   useEffect(() => {
     if (contentFetcher.state === "idle" && contentFetcher.data) {
@@ -325,41 +273,12 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     }
   }, [contentFetcher.state, contentFetcher.data]);
 
-  useEffect(() => {
-    function isHiddenByAria(el: HTMLElement | null): boolean {
-      let cur: HTMLElement | null = el;
-      while (cur) {
-        const ariaHidden = cur.getAttribute("aria-hidden");
-        const dataAriaHidden = cur.getAttribute("data-aria-hidden");
-        if (ariaHidden === "true" || dataAriaHidden === "true") return true;
-        cur = cur.parentElement;
-      }
-      return false;
-    }
-
-    function focusWhenVisible(retries = 10) {
-      if (!renamingId || ctxOpen) return;
-      const el = renameInputRef.current;
-      if (!el) {
-        if (retries > 0)
-          requestAnimationFrame(() => focusWhenVisible(retries - 1));
-        return;
-      }
-      if (isHiddenByAria(el)) {
-        if (retries > 0) setTimeout(() => focusWhenVisible(retries - 1), 50);
-        return;
-      }
-      el.focus();
-      el.select?.();
-    }
-
-    if (renamingId && !ctxOpen) focusWhenVisible();
-  }, [renamingId, ctxOpen]);
+  // focus is handled inside useFileTree
 
   // findNameById imported from helpers
 
   useEffect(() => {
-    setTreeElements(elements);
+    fileTree.setTreeElements(elements);
   }, [elements]);
 
   // updateNodeName imported from helpers
@@ -377,106 +296,45 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   //   setTimeout(() => setRenamingId(draftId), 0);
   // }
 
-  // FIXME
-  function startCreateRootFolder() {
-    const draftId = `draft-folder-${Date.now()}`;
-    setTreeElements((prev) => [
-      { id: draftId, name: "zzzz", children: [] as TreeViewElement[] },
-      ...prev,
-    ]);
-    setRenamingValue("");
-    setTimeout(() => setRenamingId(draftId), 0);
-  }
+  const startCreateRootFolder = fileTree.startCreateRootFolder;
 
-  function startCreateRootFileBottom() {
-    const draftId = `draft-file-${Date.now()}`;
-    setTreeElements((prev) => [...prev, { id: draftId, name: "" }]);
-    setRenamingValue("");
-    setTimeout(() => setRenamingId(draftId), 0);
-  }
+  const startCreateRootFileBottom = fileTree.startCreateRootFileBottom;
 
   // addDraftChildAtTop imported from helpers
 
-  function startCreateChildFolder(parentId: string) {
-    const draftId = `draft-folder-${Date.now()}`;
-    setTreeElements((prev) => {
-      const sample = addDraftChildAtTop(prev, parentId, draftId, false);
-      return sample;
-    });
-    setRenamingValue("");
-    setDraftParentId(parentId);
-    setPendingRenameId(undefined); // 충돌 방지
-    setTimeout(() => setRenamingId(draftId), 0);
-  }
+  const startCreateChildFolder = fileTree.startCreateChildFolder;
 
-  function startCreateChildFile(parentId: string) {
-    const draftId = `draft-file-${Date.now()}`;
-    setTreeElements((prev) =>
-      addDraftChildAtTop(prev, parentId, draftId, true)
-    );
-    setRenamingValue("");
-    setDraftParentId(parentId);
-    setPendingRenameId(undefined); // 충돌 방지
-    setTimeout(() => setRenamingId(draftId), 0);
-  }
+  const startCreateChildFile = fileTree.startCreateChildFile;
 
-  const createRootFetcher = useFetcher<{
-    ok: boolean;
-    id?: string;
-    name?: string;
-    error?: string;
-  }>();
+  const submitCreateFolder = fileTree.submitCreateFolder;
 
-  const [draftParentId, setDraftParentId] = useState<string | null>(null);
+  const submitCreateFile = fileTree.submitCreateFile;
 
-  function submitCreateFolder(name: string) {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      if (renamingId?.startsWith("draft-folder-")) {
-        setTreeElements((prev) => removeNodeById(prev, renamingId));
-      }
-      setRenamingId(undefined);
-      setRenamingValue("");
-      setPendingRenameId(undefined);
-      return;
-    }
-    createRootFetcher.submit(
-      { intent: "create-folder", name: trimmed, parentId: draftParentId ?? "" },
-      { method: "post" }
-    );
-  }
+  const submitDelete = fileTree.submitDelete;
 
-  function submitCreateFile(name: string) {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      if (renamingId?.startsWith("draft-file-")) {
-        setTreeElements((prev) => removeNodeById(prev, renamingId));
-      }
-      setRenamingId(undefined);
-      setRenamingValue("");
-      return;
-    }
-    createRootFetcher.submit(
-      { intent: "create-file", name: trimmed, parentId: draftParentId ?? "" },
-      { method: "post" }
-    );
-  }
+  const submitDeleteFolder = fileTree.submitDeleteFolder;
+  // create results handled in hook
 
-  function submitDelete(id: string) {
-    deleteFetcher.submit({ intent: "delete", id }, { method: "post" });
-  }
+  // file delete handled in hook
 
-  function submitDeleteFolder(id: string) {
-    deleteFolderFetcher.submit(
-      { intent: "delete-folder", id },
-      { method: "post" }
-    );
-  }
+  // folder delete handled in hook
+
+  const submitRename = fileTree.submitRename;
+
+  // rename results handled in hook
+
+  // deferred rename handled in hook
+
+  // renderTree moved to component RenderTree
+
+  // Left click is intentionally ignored for context menu
+
+  const handleEmptyAreaContextMenu = fileTree.handleEmptyAreaContextMenu;
 
   function submitSave() {
-    if (!selectedId) return;
+    if (!fileTree.selectedId) return;
     saveFetcher.submit(
-      { intent: "save-content", id: selectedId, content },
+      { intent: "save-content", id: fileTree.selectedId, content },
       { method: "post" }
     );
   }
@@ -499,133 +357,6 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     }
   }, [saveFetcher.state, saveFetcher.data]);
 
-  useEffect(() => {
-    if (createRootFetcher.state === "idle" && createRootFetcher.data?.ok) {
-      const { id, name } = createRootFetcher.data;
-      if (id && name && renamingId?.startsWith("draft-folder-")) {
-        setTreeElements((prev) => {
-          const result = updateNodeName(prev, renamingId, name);
-          return result;
-        });
-        // setTreeElements((prev) => {
-        //   console.log({ renamingId });
-        //   const result = prev.map((node) =>
-        //     node.id === renamingId
-        //       ? { ...node, id }
-        //       : {
-        //           ...node,
-        //           children: Array.isArray(node.children)
-        //             ? node.children!.map((c) => c)
-        //             : node.children,
-        //         }
-        //   );
-        //   console.log("result2", result);
-        //   return result;
-        // });
-        // setRenamingId(undefined);
-        setRenamingValue("");
-        // setDraftParentId(null);
-      }
-      if (id && name && renamingId?.startsWith("draft-file-")) {
-        setTreeElements((prev) =>
-          prev.map((node) =>
-            node.id === renamingId ? { ...node, id, name } : node
-          )
-        );
-        // setRenamingId(undefined);
-        setRenamingValue("");
-      }
-    }
-  }, [createRootFetcher.state, createRootFetcher.data, renamingId]);
-
-  useEffect(() => {
-    if (
-      deleteFetcher.state === "idle" &&
-      deleteFetcher.data?.ok &&
-      deleteFetcher.data.id
-    ) {
-      const deletedId = deleteFetcher.data.id;
-      setTreeElements((prev) => removeNodeById(prev, deletedId));
-      if (selectedId === deletedId) setSelectedId(undefined);
-      // If the open content pane is showing deleted file, clear it
-      if (contentFetcher.state === "idle" && selectedId === deletedId) {
-        setContent("");
-      }
-      if (renamingId === deletedId) setRenamingId(undefined);
-    }
-  }, [deleteFetcher.state, deleteFetcher.data]);
-
-  useEffect(() => {
-    if (
-      deleteFolderFetcher.state === "idle" &&
-      deleteFolderFetcher.data?.ok &&
-      deleteFolderFetcher.data.id
-    ) {
-      const deletedId = deleteFolderFetcher.data.id;
-      setTreeElements((prev) => removeNodeById(prev, deletedId));
-      if (selectedId === deletedId) {
-        setSelectedId(undefined);
-        setContent("");
-      }
-      if (renamingId === deletedId) setRenamingId(undefined);
-    }
-  }, [deleteFolderFetcher.state, deleteFolderFetcher.data]);
-
-  function submitRename(id: string, name: string) {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setRenamingId(undefined);
-      return;
-    }
-    renameFetcher.submit(
-      { intent: "rename", id, name: trimmed },
-      { method: "post" }
-    );
-  }
-
-  useEffect(() => {
-    if (renameFetcher.state === "idle" && renameFetcher.data?.ok) {
-      const { id, name } = renameFetcher.data;
-      if (id && name) {
-        setTreeElements((prev) => updateNodeName(prev, id, name));
-        setRenamingId(undefined);
-        setRenamingValue("");
-      }
-    }
-  }, [renameFetcher.state, renameFetcher.data]);
-
-  // Start rename only after context menu closes to avoid focus being stolen
-  useEffect(() => {
-    if (!ctxOpen && pendingRenameId) {
-      const currentName = findNameById(treeElements, pendingRenameId) ?? "";
-      setRenamingId(pendingRenameId);
-      setRenamingValue(currentName);
-      setPendingRenameId(undefined);
-    }
-  }, [ctxOpen, pendingRenameId, treeElements]);
-
-  // renderTree moved to component RenderTree
-
-  // Left click is intentionally ignored for context menu
-
-  const handleEmptyAreaContextMenu = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      const target = e.target as HTMLElement;
-      const clickedInteractive = target.closest(
-        "button, [role='button'], [data-radix-accordion-trigger]"
-      );
-      if (clickedInteractive) return;
-
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-      setSelectedId(undefined);
-      setCtxTarget("empty");
-      setCtxPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-      setCtxOpen(true);
-    },
-    []
-  );
-
   return (
     <SidebarProvider>
       <Sidebar>
@@ -636,32 +367,35 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
         </SidebarHeader>
         <SidebarContent className="h-full">
           <div
-            ref={containerRef}
+            ref={fileTree.containerRef}
             className="relative h-full"
             onContextMenu={handleEmptyAreaContextMenu}
           >
-            <DropdownMenu open={ctxOpen} onOpenChange={setCtxOpen}>
+            <DropdownMenu
+              open={fileTree.ctxOpen}
+              onOpenChange={fileTree.setCtxOpen}
+            >
               <DropdownMenuTrigger asChild>
                 <button
-                  ref={triggerRef}
+                  ref={fileTree.triggerRef}
                   style={{
                     position: "absolute",
-                    left: ctxPos.x,
-                    top: ctxPos.y,
+                    left: fileTree.ctxPos.x,
+                    top: fileTree.ctxPos.y,
                     width: 1,
                     height: 1,
                     opacity: 0,
-                    pointerEvents: ctxOpen ? "auto" : "none",
+                    pointerEvents: fileTree.ctxOpen ? "auto" : "none",
                   }}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {ctxTarget === "empty" && (
+                {fileTree.ctxTarget === "empty" && (
                   <>
                     <DropdownMenuItem
                       onClick={() => {
                         startCreateRootFolder();
-                        setCtxOpen(false);
+                        fileTree.setCtxOpen(false);
                       }}
                     >
                       새폴더
@@ -669,7 +403,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     <DropdownMenuItem
                       onClick={() => {
                         startCreateRootFileBottom();
-                        setCtxOpen(false);
+                        fileTree.setCtxOpen(false);
                       }}
                     >
                       새파일
@@ -677,12 +411,13 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                   </>
                 )}
 
-                {ctxTarget === "folder" && (
+                {fileTree.ctxTarget === "folder" && (
                   <>
                     <DropdownMenuItem
                       onClick={() => {
-                        if (ctxTargetId) setPendingRenameId(ctxTargetId);
-                        setCtxOpen(false);
+                        if (fileTree.ctxTargetId)
+                          fileTree.requestRename(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
                       }}
                     >
                       이름바꾸기
@@ -690,16 +425,18 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
 
                     <DropdownMenuItem
                       onClick={() => {
-                        if (ctxTargetId) startCreateChildFolder(ctxTargetId);
-                        setCtxOpen(false);
+                        if (fileTree.ctxTargetId)
+                          startCreateChildFolder(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
                       }}
                     >
                       새폴더
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        if (ctxTargetId) startCreateChildFile(ctxTargetId);
-                        setCtxOpen(false);
+                        if (fileTree.ctxTargetId)
+                          startCreateChildFile(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
                       }}
                     >
                       새파일
@@ -707,8 +444,9 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {
-                        if (ctxTargetId) submitDeleteFolder(ctxTargetId);
-                        setCtxOpen(false);
+                        if (fileTree.ctxTargetId)
+                          submitDeleteFolder(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
                       }}
                     >
                       삭제
@@ -716,12 +454,13 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                   </>
                 )}
 
-                {ctxTarget === "file" && (
+                {fileTree.ctxTarget === "file" && (
                   <>
                     <DropdownMenuItem
                       onClick={() => {
-                        if (ctxTargetId) setPendingRenameId(ctxTargetId);
-                        setCtxOpen(false);
+                        if (fileTree.ctxTargetId)
+                          fileTree.requestRename(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
                       }}
                     >
                       이름바꾸기
@@ -729,8 +468,9 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {
-                        if (ctxTargetId) submitDelete(ctxTargetId);
-                        setCtxOpen(false);
+                        if (fileTree.ctxTargetId)
+                          submitDelete(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
                       }}
                     >
                       삭제
@@ -742,43 +482,24 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
 
             <Tree
               className="overflow-hidden rounded-md bg-background p-2"
-              initialExpandedItems={expandedIds}
-              key={treeKey}
-              elements={treeElements}
-              onSelectedChange={setSelectedId}
+              initialExpandedItems={fileTree.expandedIds}
+              key={fileTree.treeKey}
+              elements={fileTree.treeElements}
+              onSelectedChange={fileTree.setSelectedId}
             >
               <RenderTree
-                nodes={treeElements}
-                renamingId={renamingId}
-                renamingValue={renamingValue}
-                setRenamingValue={setRenamingValue}
-                renameInputRef={renameInputRef}
+                nodes={fileTree.treeElements}
+                renamingId={fileTree.renamingId}
+                renamingValue={fileTree.renamingValue}
+                setRenamingValue={fileTree.setRenamingValue}
+                renameInputRef={fileTree.renameInputRef}
                 onSubmitCreateFolder={submitCreateFolder}
                 onSubmitCreateFile={submitCreateFile}
                 onSubmitRename={submitRename}
-                onRemoveDraftById={(id) =>
-                  setTreeElements((prev) => removeNodeById(prev, id))
-                }
-                setRenamingId={setRenamingId}
-                onFolderContextMenu={(id, e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.nativeEvent.stopImmediatePropagation?.();
-                  setCtxTargetId(id);
-                  setCtxTarget("folder");
-                  openMenuAt(e.clientX, e.clientY);
-                  const path = collectAncestorIds(treeElements, id);
-                  setExpandedIds(path);
-                  setTreeKey((k) => k + 1);
-                }}
-                onFileContextMenu={(id, e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.nativeEvent.stopImmediatePropagation?.();
-                  setCtxTargetId(id);
-                  setCtxTarget("file");
-                  openMenuAt(e.clientX, e.clientY);
-                }}
+                onRemoveDraftById={fileTree.removeDraftById}
+                setRenamingId={fileTree.setRenamingId}
+                onFolderContextMenu={fileTree.onFolderContextMenu}
+                onFileContextMenu={fileTree.onFileContextMenu}
               />
             </Tree>
           </div>
@@ -796,14 +517,14 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
             size="sm"
             variant="secondary"
             onClick={submitSave}
-            disabled={!selectedId || isSaving}
+            disabled={!fileTree.selectedId || isSaving}
           >
             {isSaving ? "저장 중…" : "저장"}
           </Button>
           <Button
             size="sm"
             onClick={() => run(content)}
-            disabled={!loaded || !!skError || !selectedId}
+            disabled={!loaded || !!skError || !fileTree.selectedId}
           >
             실행
           </Button>
@@ -811,7 +532,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
             size="sm"
             variant="destructive"
             onClick={() => stop()}
-            disabled={!selectedId}
+            disabled={!fileTree.selectedId}
           >
             정지
           </Button>
