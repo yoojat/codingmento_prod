@@ -335,6 +335,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const [treeKey, setTreeKey] = useState(0);
   const [selectedName, setSelectedName] = useState<string>("");
   const saveFetcher = useFetcher<{ ok: boolean; error?: string }>();
+  const [saveInfo, setSaveInfo] = useState<string>("");
 
   function collectAncestorIds(
     nodes: TreeViewElement[],
@@ -598,6 +599,24 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
       { method: "post" }
     );
   }
+
+  const isSaving = saveFetcher.state !== "idle";
+
+  useEffect(() => {
+    if (saveFetcher.state === "idle" && saveFetcher.data) {
+      if (saveFetcher.data.ok) {
+        setSaveInfo("저장 완료");
+      } else {
+        setSaveInfo(
+          `저장 실패${
+            saveFetcher.data.error ? `: ${saveFetcher.data.error}` : ""
+          }`
+        );
+      }
+      const t = setTimeout(() => setSaveInfo(""), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [saveFetcher.state, saveFetcher.data]);
 
   useEffect(() => {
     if (createRootFetcher.state === "idle" && createRootFetcher.data?.ok) {
@@ -992,14 +1011,17 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
             size="sm"
             variant="secondary"
             onClick={submitSave}
-            disabled={!selectedId}
+            disabled={!selectedId || isSaving}
           >
-            저장
+            {isSaving ? "저장 중…" : "저장"}
           </Button>
         </div>
 
         <div className="p-4">
           <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground">
+            {saveInfo ? (
+              <div className="mb-2 text-xs text-green-600">{saveInfo}</div>
+            ) : null}
             {contentFetcher.state === "loading" ? (
               "Loading..."
             ) : (
