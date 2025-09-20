@@ -366,6 +366,17 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   useEffect(() => {
     if (!selectedId) return;
     contentFetcher.load(`/lessons/private-code-content/${selectedId}`);
+    // 파일 전환 시 실행 결과 초기화
+    setRenamingId(undefined);
+    setRenamingValue("");
+    // 콘솔 출력은 run 호출 전에만 세팅되므로 여기서는 UI만 초기화
+    try {
+      const pre = document.querySelector("pre");
+      if (pre) pre.textContent = "";
+    } catch {}
+    if (canvasRef?.current) {
+      canvasRef.current.innerHTML = "";
+    }
   }, [selectedId]);
 
   useEffect(() => {
