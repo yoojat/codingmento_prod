@@ -4,6 +4,14 @@ import {
   Tree,
   type TreeViewElement,
 } from "~/common/components/magicui/file-tree";
+import {
+  toTreeElements,
+  findNameById,
+  updateNodeName,
+  removeNodeById,
+  addDraftChildAtTop,
+  collectAncestorIds,
+} from "../helpers/file-tree";
 import type { Route } from "./+types/private-code";
 import { makeSSRClient } from "~/supa-client";
 import { getLoggedInUserId } from "~/features/users/queries";
@@ -29,70 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "~/common/components/ui/dropdown-menu";
 
-function toTreeElements(
-  rows: Array<{
-    id: string | number;
-    name: string;
-    type: string;
-    parent_id: string | number | null;
-  }>
-): TreeViewElement[] {
-  const nodes = new Map<string, TreeViewElement>();
-
-  rows.forEach((row) => {
-    const id = String(row.id);
-    const isFolder = row.type === "folder";
-    const existing = nodes.get(id);
-    if (existing) {
-      existing.name = row.name;
-      if (isFolder && !existing.children) existing.children = [];
-      return;
-    }
-    nodes.set(id, {
-      id,
-      name: row.name,
-      ...(isFolder ? { children: [] as TreeViewElement[] } : {}),
-    });
-  });
-
-  const hasParent = new Set<string>();
-  rows.forEach((row) => {
-    if (row.parent_id == null) return;
-    const id = String(row.id);
-    const parentId = String(row.parent_id);
-    const parent = nodes.get(parentId);
-    if (parent) {
-      if (!parent.children) parent.children = [];
-      parent.children.push(nodes.get(id)!);
-      hasParent.add(id);
-    }
-  });
-
-  const roots: TreeViewElement[] = [];
-  rows.forEach((row) => {
-    const id = String(row.id);
-    if (
-      !hasParent.has(id) &&
-      (row.parent_id == null || !nodes.has(String(row.parent_id)))
-    ) {
-      const node = nodes.get(id);
-      if (node) roots.push(node);
-    }
-  });
-
-  const sortNodes = (arr: TreeViewElement[]) => {
-    arr.sort((a, b) => {
-      const aFolder = Array.isArray(a.children);
-      const bFolder = Array.isArray(b.children);
-      if (aFolder !== bFolder) return aFolder ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
-    arr.forEach((n) => n.children && sortNodes(n.children));
-  };
-  sortNodes(roots);
-
-  return roots;
-}
+// helpers moved to ../helpers/file-tree
 
 export const loader = async ({ request, params }: Route.LoaderArgs) => {
   const { client } = makeSSRClient(request);
@@ -346,21 +291,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     canvasRef,
   } = useSkulptRunner();
 
-  function collectAncestorIds(
-    nodes: TreeViewElement[],
-    targetId: string,
-    path: string[] = []
-  ): string[] {
-    for (const node of nodes) {
-      const next = [...path, node.id];
-      if (node.id === targetId) return next; // 루트→타겟 경로
-      if (Array.isArray(node.children)) {
-        const found = collectAncestorIds(node.children, targetId, next);
-        if (found.length) return found;
-      }
-    }
-    return [];
-  }
+  // collectAncestorIds imported from helpers
 
   const openMenuAt = useCallback((clientX: number, clientY: number) => {
     const container = containerRef.current;
@@ -424,55 +355,15 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     if (renamingId && !ctxOpen) focusWhenVisible();
   }, [renamingId, ctxOpen]);
 
-  function findNameById(
-    nodes: TreeViewElement[],
-    id: string
-  ): string | undefined {
-    for (const node of nodes) {
-      if (node.id === id) return node.name as string;
-      if (node.children) {
-        const res = findNameById(node.children, id);
-        if (res) return res;
-      }
-    }
-    return undefined;
-  }
+  // findNameById imported from helpers
 
   useEffect(() => {
     setTreeElements(elements);
   }, [elements]);
 
-  function updateNodeName(
-    nodes: TreeViewElement[],
-    id: string,
-    newName: string
-  ): TreeViewElement[] {
-    return nodes.map((node) => {
-      if (node.id === id) {
-        return { ...node, name: newName };
-      }
-      if (node.children && node.children.length > 0) {
-        return {
-          ...node,
-          children: updateNodeName(node.children, id, newName),
-        };
-      }
-      return node;
-    });
-  }
+  // updateNodeName imported from helpers
 
-  function removeNodeById(
-    nodes: TreeViewElement[],
-    id: string
-  ): TreeViewElement[] {
-    return nodes
-      .map((node) =>
-        Array.isArray(node.children)
-          ? { ...node, children: removeNodeById(node.children, id) }
-          : node
-      )
-      .filter((n) => n.id !== id);
-  }
+  // removeNodeById imported from helpers
   // function startCreateChildFolder(parentId: string) {
   //   const draftId = `draft-folder-${Date.now()}`;
   //   setTreeElements((prev) => {
@@ -503,38 +394,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     setTimeout(() => setRenamingId(draftId), 0);
   }
 
-  function addDraftChildAtTop(
-    nodes: TreeViewElement[],
-    parentId: string,
-    draftId: string,
-    isFile: boolean
-  ): TreeViewElement[] {
-    return nodes.map((node) => {
-      if (node.id === parentId) {
-        const children = Array.isArray(node.children) ? node.children : [];
-        const draft: TreeViewElement = isFile
-          ? { id: draftId, name: "" }
-          : { id: draftId, name: "", children: [] as TreeViewElement[] };
-        const result = {
-          ...node,
-          children: [draft, ...children],
-        };
-        return result;
-      }
-      if (Array.isArray(node.children)) {
-        return {
-          ...node,
-          children: addDraftChildAtTop(
-            node.children,
-            parentId,
-            draftId,
-            isFile
-          ),
-        };
-      }
-      return node;
-    });
-  }
+  // addDraftChildAtTop imported from helpers
 
   function startCreateChildFolder(parentId: string) {
     const draftId = `draft-folder-${Date.now()}`;
