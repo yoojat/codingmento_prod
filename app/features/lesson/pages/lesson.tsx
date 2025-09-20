@@ -7,6 +7,8 @@ import {
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
+  SidebarHeader,
+  SidebarContent,
 } from "~/common/components/ui/sidebar";
 
 import Chat from "../components/chat";
@@ -21,8 +23,17 @@ import { defaultKeymap, historyKeymap } from "@codemirror/commands";
 import FileExplorerSidebar, {
   type FileNode,
 } from "~/features/lesson/components/file-explorer";
-import { SaveIcon } from "lucide-react";
+import { SaveIcon, Sidebar } from "lucide-react";
 import { useFiles } from "~/hooks/use-files";
+import {
+  Tree,
+  Folder,
+  type TreeViewElement,
+} from "~/common/components/magicui/file-tree";
+import { makeSSRClient } from "~/supa-client";
+import { getLoggedInUserId } from "~/features/users/queries";
+import type { Route } from "./+types/lesson";
+import { toTreeElements } from "../helpers/file-tree";
 
 interface UserState {
   nickname: string;
@@ -34,7 +45,23 @@ interface UserState {
 const generateUserId = () =>
   `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-export default function Lesson() {
+export const loader = async ({ request }: Route.LoaderArgs) => {
+  const { client } = makeSSRClient(request);
+  const userId = await getLoggedInUserId(client);
+  const { data: files, error: fileError } = await client
+    .from("files")
+    .select("id,name,type,parent_id,path")
+    .eq("profile_id", userId)
+    .order("updated_at", { ascending: false });
+  if (fileError) throw new Error(fileError.message);
+  return {
+    files: files ?? [],
+    elements: toTreeElements(files ?? []),
+  };
+};
+
+export default function Lesson({ loaderData }: Route.ComponentProps) {
+  const { elements } = loaderData as unknown as { elements: TreeViewElement[] };
   const socket = useSocket();
 
   // 기본 상태
@@ -46,6 +73,13 @@ export default function Lesson() {
   const [myNickname, setMyNickname] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => setIsHydrated(true), []);
+
+  // Files
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [treeKey, setTreeKey] = useState(0);
+  const [treeElements, setTreeElements] = useState<TreeViewElement[]>(elements);
+  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
 
   // 미디어 상태 (VideoControls로 내부화)
   const [chatMessages, setChatMessages] = useState<
@@ -261,13 +295,51 @@ export default function Lesson() {
     </div>
   );
 
+  const handleEmptyAreaContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const target = e.target as HTMLElement;
+      const clickedInteractive = target.closest(
+        "button, [role='button'], [data-radix-accordion-trigger]"
+      );
+      console.log(target, clickedInteractive);
+      if (clickedInteractive) return;
+    },
+    []
+  );
+
+  function renderTree(nodes: TreeViewElement[]) {
+    return nodes.map((node) => (
+      <Folder key={node.id} value={node.id} element={node.name} />
+    ));
+  }
+
   return (
     <SidebarProvider>
-      <FileExplorerSidebar
-        activeFilePath={activeFilePath}
-        onSelectFile={(p) => setActiveFilePath(p)}
-        nodes={fileTree}
-      />
+      <Sidebar>
+        <SidebarHeader>
+          <div className="pt-20 px-2 text-xs font-medium flex items-center justify-between">
+            <div>Files</div>
+          </div>
+        </SidebarHeader>
+        <SidebarContent className="h-full">
+          <div
+            ref={containerRef}
+            className="relative h-full"
+            onContextMenu={handleEmptyAreaContextMenu}
+          >
+            <Tree
+              className="overflow-hidden rounded-md bg-background p-2"
+              initialExpandedItems={expandedIds}
+              key={treeKey}
+              elements={treeElements}
+              onSelectedChange={setSelectedId}
+            >
+              {renderTree(treeElements)}
+            </Tree>
+          </div>
+        </SidebarContent>
+      </Sidebar>
       <SidebarInset>
         <div className="p-6 max-w-none w-full">
           {!isWelcomeHidden && (

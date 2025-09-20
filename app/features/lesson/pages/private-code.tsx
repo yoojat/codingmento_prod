@@ -4,6 +4,7 @@ import {
   Tree,
   type TreeViewElement,
 } from "~/common/components/magicui/file-tree";
+import RenderTree from "../components/render-tree";
 import {
   toTreeElements,
   findNameById,
@@ -265,7 +266,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   );
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const [ctxTargetId, setCtxTargetId] = useState<string | undefined>(undefined);
   const deleteFetcher = useFetcher<{
     ok: boolean;
@@ -603,135 +604,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
     }
   }, [ctxOpen, pendingRenameId, treeElements]);
 
-  function renderTree(nodes: TreeViewElement[]) {
-    return nodes.map((node) => {
-      const hasChildren = Array.isArray(node.children);
-      if (hasChildren) {
-        return (
-          <Folder
-            key={node.id}
-            element={
-              renamingId === node.id ? (
-                <input
-                  ref={renameInputRef}
-                  className="h-6 rounded border px-1 text-xs"
-                  value={renamingValue}
-                  placeholder={"폴더이름을 작성해주세요"}
-                  onChange={(e) => setRenamingValue(e.target.value)}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                  onBlur={() => {
-                    const trimmed = renamingValue.trim();
-                    if (renamingId?.startsWith("draft-folder-")) {
-                      submitCreateFolder(renamingValue);
-                    } else if (renamingId) {
-                      if (!trimmed) {
-                        setRenamingId(undefined);
-                      } else {
-                        submitRename(renamingId, renamingValue);
-                      }
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (renamingId?.startsWith("draft-folder-")) {
-                        submitCreateFolder(renamingValue);
-                      } else if (renamingId) {
-                        submitRename(renamingId, renamingValue);
-                      }
-                    } else if (e.key === "Escape") {
-                      e.preventDefault();
-                      if (renamingId?.startsWith("draft-folder-")) {
-                        setTreeElements((prev) =>
-                          removeNodeById(prev, renamingId)
-                        );
-                      }
-                      setRenamingId(undefined);
-                    }
-                  }}
-                />
-              ) : (
-                node.name
-              )
-            }
-            value={node.id}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              e.nativeEvent.stopImmediatePropagation?.();
-              setCtxTargetId(node.id);
-              setCtxTarget("folder");
-              openMenuAt(e.clientX, e.clientY);
-              const path = collectAncestorIds(treeElements, node.id);
-              setExpandedIds(path);
-              setTreeKey((k) => k + 1);
-            }}
-          >
-            {renderTree(node.children!)}
-          </Folder>
-        );
-      }
-      return (
-        <File
-          key={node.id}
-          value={node.id}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.nativeEvent.stopImmediatePropagation?.();
-            setCtxTargetId(node.id);
-            setCtxTarget("file");
-            openMenuAt(e.clientX, e.clientY);
-          }}
-        >
-          {renamingId === node.id ? (
-            <input
-              ref={renameInputRef}
-              className="h-6 rounded border px-1 text-xs"
-              value={renamingValue}
-              placeholder={"파일이름을 작성해주세요"}
-              onChange={(e) => setRenamingValue(e.target.value)}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              onBlur={() => {
-                const trimmed = renamingValue.trim();
-                if (renamingId?.startsWith("draft-file-")) {
-                  submitCreateFile(renamingValue);
-                } else if (renamingId) {
-                  if (!trimmed) {
-                    setRenamingId(undefined);
-                  } else {
-                    submitRename(renamingId, renamingValue);
-                  }
-                }
-              }}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  if (renamingId?.startsWith("draft-file-")) {
-                    submitCreateFile(renamingValue);
-                  } else if (renamingId) {
-                    submitRename(renamingId, renamingValue);
-                  }
-                } else if (e.key === "Escape") {
-                  e.preventDefault();
-                  if (renamingId?.startsWith("draft-file-")) {
-                    setTreeElements((prev) => removeNodeById(prev, renamingId));
-                  }
-                  setRenamingId(undefined);
-                }
-              }}
-            />
-          ) : (
-            <p>{node.name}</p>
-          )}
-        </File>
-      );
-    });
-  }
+  // renderTree moved to component RenderTree
 
   // Left click is intentionally ignored for context menu
 
@@ -874,7 +747,39 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
               elements={treeElements}
               onSelectedChange={setSelectedId}
             >
-              {renderTree(treeElements)}
+              <RenderTree
+                nodes={treeElements}
+                renamingId={renamingId}
+                renamingValue={renamingValue}
+                setRenamingValue={setRenamingValue}
+                renameInputRef={renameInputRef}
+                onSubmitCreateFolder={submitCreateFolder}
+                onSubmitCreateFile={submitCreateFile}
+                onSubmitRename={submitRename}
+                onRemoveDraftById={(id) =>
+                  setTreeElements((prev) => removeNodeById(prev, id))
+                }
+                setRenamingId={setRenamingId}
+                onFolderContextMenu={(id, e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.nativeEvent.stopImmediatePropagation?.();
+                  setCtxTargetId(id);
+                  setCtxTarget("folder");
+                  openMenuAt(e.clientX, e.clientY);
+                  const path = collectAncestorIds(treeElements, id);
+                  setExpandedIds(path);
+                  setTreeKey((k) => k + 1);
+                }}
+                onFileContextMenu={(id, e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.nativeEvent.stopImmediatePropagation?.();
+                  setCtxTargetId(id);
+                  setCtxTarget("file");
+                  openMenuAt(e.clientX, e.clientY);
+                }}
+              />
             </Tree>
           </div>
         </SidebarContent>
