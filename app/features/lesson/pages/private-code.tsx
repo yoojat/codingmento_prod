@@ -281,7 +281,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
 export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const { elements } = loaderData as unknown as { elements: TreeViewElement[] };
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
-  const contentFetcher = useFetcher<{ content: string }>();
+  const contentFetcher = useFetcher<{ content: string; name: string }>();
   const renameFetcher = useFetcher<{
     ok: boolean;
     id?: string;
@@ -319,6 +319,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   }>();
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [treeKey, setTreeKey] = useState(0);
+  const [selectedName, setSelectedName] = useState<string>("");
 
   function collectAncestorIds(
     nodes: TreeViewElement[],
@@ -352,6 +353,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   useEffect(() => {
     if (contentFetcher.state === "idle" && contentFetcher.data) {
       setContent(contentFetcher.data.content ?? "");
+      setSelectedName(contentFetcher.data.name ?? "");
     }
   }, [contentFetcher.state, contentFetcher.data]);
 
@@ -960,30 +962,30 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
         <div className="flex items-center gap-2 border-b p-3">
           <SidebarTrigger />
           <div className="truncate text-sm text-muted-foreground">
-            {selectedId ? `File #${selectedId}` : "파일을 선택하세요"}
+            {selectedName ? `${selectedName}` : "파일을 선택하세요"}
           </div>
         </div>
 
         <div className="p-4">
           <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground">
-            {contentFetcher.state === "loading"
-              ? "Loading..."
-              : contentFetcher.data?.content && (
-                  <CodeMirror
-                    value={contentFetcher.data.content}
-                    height="400px"
-                    onChange={(value) => setContent(value)}
-                    basicSetup={{
-                      lineNumbers: true,
-                      highlightActiveLine: true,
-                      highlightActiveLineGutter: true,
-                      indentOnInput: true,
-                    }}
-                    theme="light"
-                    style={{ border: "1px solid #ddd" }}
-                    extensions={[python()]}
-                  />
-                )}
+            {contentFetcher.state === "loading" ? (
+              "Loading..."
+            ) : (
+              <CodeMirror
+                value={contentFetcher.data?.content ?? ""}
+                height="400px"
+                onChange={(value) => setContent(value)}
+                basicSetup={{
+                  lineNumbers: true,
+                  highlightActiveLine: true,
+                  highlightActiveLineGutter: true,
+                  indentOnInput: true,
+                }}
+                theme="light"
+                style={{ border: "1px solid #ddd" }}
+                extensions={[python()]}
+              />
+            )}
           </div>
         </div>
       </SidebarInset>

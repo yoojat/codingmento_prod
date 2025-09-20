@@ -14,7 +14,7 @@ export const loader = async ({ request, params }: Route.LoaderArgs) => {
 
   const { data: file, error: fileError } = await client
     .from("files")
-    .select("id")
+    .select("id,name")
     .eq("id", fileId)
     .eq("profile_id", userId)
     .maybeSingle();
@@ -29,7 +29,11 @@ export const loader = async ({ request, params }: Route.LoaderArgs) => {
   if (contentError)
     throw data({ message: contentError.message }, { status: 500 });
 
-  return { id: fileId, content: contentRow?.content ?? "" };
+  return {
+    id: fileId,
+    content: contentRow?.content ?? "",
+    name: file?.name ?? "",
+  };
 };
 
 export default function PrivateCodeContentRoute() {
