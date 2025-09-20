@@ -7,6 +7,7 @@ import {
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
+  Sidebar,
   SidebarHeader,
   SidebarContent,
 } from "~/common/components/ui/sidebar";
@@ -23,17 +24,18 @@ import { defaultKeymap, historyKeymap } from "@codemirror/commands";
 import FileExplorerSidebar, {
   type FileNode,
 } from "~/features/lesson/components/file-explorer";
-import { SaveIcon, Sidebar } from "lucide-react";
+import { SaveIcon } from "lucide-react";
 import { useFiles } from "~/hooks/use-files";
+import { useFileTree } from "../hooks/use-file-tree";
 import {
   Tree,
-  Folder,
   type TreeViewElement,
 } from "~/common/components/magicui/file-tree";
-import { makeSSRClient } from "~/supa-client";
-import { getLoggedInUserId } from "~/features/users/queries";
-import type { Route } from "./+types/lesson";
 import { toTreeElements } from "../helpers/file-tree";
+import { getLoggedInUserId } from "~/features/users/queries";
+import { makeSSRClient } from "~/supa-client";
+import type { Route } from "./+types/lesson";
+import { RenderTree } from "../components/render-tree";
 
 interface UserState {
   nickname: string;
@@ -54,14 +56,10 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     .eq("profile_id", userId)
     .order("updated_at", { ascending: false });
   if (fileError) throw new Error(fileError.message);
-  return {
-    files: files ?? [],
-    elements: toTreeElements(files ?? []),
-  };
+  return { elements: toTreeElements(files ?? []) };
 };
 
 export default function Lesson({ loaderData }: Route.ComponentProps) {
-  const { elements } = loaderData as unknown as { elements: TreeViewElement[] };
   const socket = useSocket();
 
   // 기본 상태
@@ -74,12 +72,9 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => setIsHydrated(true), []);
 
-  // Files
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [expandedIds, setExpandedIds] = useState<string[]>([]);
-  const [treeKey, setTreeKey] = useState(0);
-  const [treeElements, setTreeElements] = useState<TreeViewElement[]>(elements);
-  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  // 파일
+  const { elements } = loaderData as unknown as { elements: TreeViewElement[] };
+  const fileTree = useFileTree(elements);
 
   // 미디어 상태 (VideoControls로 내부화)
   const [chatMessages, setChatMessages] = useState<
@@ -152,7 +147,6 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
     ],
     []
   );
-  const [fileTree] = useState<FileNode[]>(initialTree);
   const [activeFilePath, setActiveFilePath] = useState<string | null>(
     "/project/main.py"
   );
@@ -264,7 +258,7 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
       copy.set(myUserId, content);
       return copy;
     });
-    const unsub = subscribe(activeFilePath, (next) => {
+    const unsub = subscribe(activeFilePath, (next: string) => {
       setEditorContents((previous) => {
         const copy = new Map(previous);
         copy.set(myUserId, next);
@@ -295,25 +289,6 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
     </div>
   );
 
-  const handleEmptyAreaContextMenu = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      const target = e.target as HTMLElement;
-      const clickedInteractive = target.closest(
-        "button, [role='button'], [data-radix-accordion-trigger]"
-      );
-      console.log(target, clickedInteractive);
-      if (clickedInteractive) return;
-    },
-    []
-  );
-
-  function renderTree(nodes: TreeViewElement[]) {
-    return nodes.map((node) => (
-      <Folder key={node.id} value={node.id} element={node.name} />
-    ));
-  }
-
   return (
     <SidebarProvider>
       <Sidebar>
@@ -324,18 +299,31 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
         </SidebarHeader>
         <SidebarContent className="h-full">
           <div
-            ref={containerRef}
+            ref={fileTree.containerRef}
             className="relative h-full"
-            onContextMenu={handleEmptyAreaContextMenu}
+            onContextMenu={fileTree.handleEmptyAreaContextMenu}
           >
             <Tree
               className="overflow-hidden rounded-md bg-background p-2"
-              initialExpandedItems={expandedIds}
-              key={treeKey}
-              elements={treeElements}
-              onSelectedChange={setSelectedId}
+              initialExpandedItems={fileTree.expandedIds}
+              key={fileTree.treeKey}
+              elements={fileTree.treeElements}
+              onSelectedChange={fileTree.setSelectedId}
             >
-              {renderTree(treeElements)}
+              <RenderTree
+                nodes={fileTree.treeElements}
+                renamingId={fileTree.renamingId}
+                renamingValue={fileTree.renamingValue}
+                setRenamingValue={fileTree.setRenamingValue}
+                renameInputRef={fileTree.renameInputRef}
+                onSubmitCreateFolder={fileTree.submitCreateFolder}
+                onSubmitCreateFile={fileTree.submitCreateFile}
+                onSubmitRename={fileTree.submitRename}
+                onRemoveDraftById={fileTree.removeDraftById}
+                setRenamingId={fileTree.setRenamingId}
+                onFolderContextMenu={fileTree.onFolderContextMenu}
+                onFileContextMenu={fileTree.onFileContextMenu}
+              />
             </Tree>
           </div>
         </SidebarContent>

@@ -11,6 +11,7 @@ export default [
   ...prefix("/lessons", [
     route("/playground", "features/lesson/pages/playground.tsx"),
     route("/lesson", "features/lesson/pages/lesson.tsx"),
+    route("/lesson2", "features/lesson/pages/lesson2.tsx"),
     route("/private-code", "features/lesson/pages/private-code.tsx"),
     route(
       "/private-code-content/:fileId",
