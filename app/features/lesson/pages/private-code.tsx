@@ -21,6 +21,7 @@ import CodeMirror, { keymap } from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 import { Button } from "~/common/components/ui/button";
 import { FilePlusIcon, FolderPlusIcon, SaveIcon } from "lucide-react";
+import { useSkulptRunner } from "~/hooks/use-skulpt-runner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -336,6 +337,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const [selectedName, setSelectedName] = useState<string>("");
   const saveFetcher = useFetcher<{ ok: boolean; error?: string }>();
   const [saveInfo, setSaveInfo] = useState<string>("");
+  const { loaded, error: skError, output, run, canvasRef } = useSkulptRunner();
 
   function collectAncestorIds(
     nodes: TreeViewElement[],
@@ -1015,31 +1017,73 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
           >
             {isSaving ? "저장 중…" : "저장"}
           </Button>
+          <Button
+            size="sm"
+            onClick={() => run(content)}
+            disabled={!loaded || !!skError || !selectedId}
+          >
+            실행
+          </Button>
         </div>
 
         <div className="p-4">
-          <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground">
-            {saveInfo ? (
-              <div className="mb-2 text-xs text-green-600">{saveInfo}</div>
-            ) : null}
-            {contentFetcher.state === "loading" ? (
-              "Loading..."
-            ) : (
-              <CodeMirror
-                value={contentFetcher.data?.content ?? ""}
-                height="400px"
-                onChange={(value) => setContent(value)}
-                basicSetup={{
-                  lineNumbers: true,
-                  highlightActiveLine: true,
-                  highlightActiveLineGutter: true,
-                  indentOnInput: true,
-                }}
-                theme="light"
-                style={{ border: "1px solid #ddd" }}
-                extensions={[python()]}
-              />
-            )}
+          <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              {contentFetcher.state === "loading" ? (
+                "Loading..."
+              ) : (
+                <div>
+                  <h4 className="mb-1 text-xs font-semibold text-gray-700">
+                    {saveInfo ? (
+                      <div className="mb-2 text-xs text-green-600">
+                        {saveInfo}
+                      </div>
+                    ) : (
+                      "editor"
+                    )}
+                  </h4>
+                  <CodeMirror
+                    value={contentFetcher.data?.content ?? ""}
+                    height="420px"
+                    onChange={(value) => setContent(value)}
+                    basicSetup={{
+                      lineNumbers: true,
+                      highlightActiveLine: true,
+                      highlightActiveLineGutter: true,
+                      indentOnInput: true,
+                    }}
+                    theme="light"
+                    style={{ border: "1px solid #ddd" }}
+                    extensions={[python()]}
+                  />
+                </div>
+              )}
+              <div className="mt-3">
+                <h4 className="mb-1 text-xs font-semibold text-gray-700">
+                  콘솔
+                </h4>
+                <pre className="p-2 bg-gray-100 rounded text-xs overflow-auto max-h-48 md:max-h-80">
+                  {output}
+                </pre>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3">
+              {!loaded && !skError && (
+                <span className="text-xs text-gray-500">Skulpt 로딩 중…</span>
+              )}
+              {skError && (
+                <span className="text-xs text-red-600">Skulpt 로딩 실패</span>
+              )}
+              <div>
+                <h4 className="mb-1 text-xs font-semibold text-gray-700">
+                  Turtle
+                </h4>
+                <div
+                  ref={canvasRef}
+                  className="w-full h-[220px] md:h-[500px] border border-gray-200 rounded"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </SidebarInset>
