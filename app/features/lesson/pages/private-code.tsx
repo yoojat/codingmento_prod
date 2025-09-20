@@ -275,6 +275,20 @@ export const action = async ({ request }: Route.ActionArgs) => {
     };
   }
 
+  if (intent === "save-content") {
+    const idRaw = formData.get("id");
+    const contentRaw = formData.get("content");
+    if (!idRaw) return { ok: false, error: "Missing id" };
+    const idNum = Number(idRaw);
+    const contentStr = typeof contentRaw === "string" ? contentRaw : "";
+
+    const { error } = await client
+      .from("file_contents")
+      .upsert({ id: idNum, content: contentStr }, { onConflict: "id" });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
   return { ok: false, error: "Unsupported intent" };
 };
 
@@ -320,6 +334,7 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [treeKey, setTreeKey] = useState(0);
   const [selectedName, setSelectedName] = useState<string>("");
+  const saveFetcher = useFetcher<{ ok: boolean; error?: string }>();
 
   function collectAncestorIds(
     nodes: TreeViewElement[],
@@ -572,6 +587,14 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   function submitDeleteFolder(id: string) {
     deleteFolderFetcher.submit(
       { intent: "delete-folder", id },
+      { method: "post" }
+    );
+  }
+
+  function submitSave() {
+    if (!selectedId) return;
+    saveFetcher.submit(
+      { intent: "save-content", id: selectedId, content },
       { method: "post" }
     );
   }
@@ -964,6 +987,15 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
           <div className="truncate text-sm text-muted-foreground">
             {selectedName ? `${selectedName}` : "파일을 선택하세요"}
           </div>
+          <div className="flex-1" />
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={submitSave}
+            disabled={!selectedId}
+          >
+            저장
+          </Button>
         </div>
 
         <div className="p-4">
