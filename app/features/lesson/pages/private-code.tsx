@@ -337,7 +337,14 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
   const [selectedName, setSelectedName] = useState<string>("");
   const saveFetcher = useFetcher<{ ok: boolean; error?: string }>();
   const [saveInfo, setSaveInfo] = useState<string>("");
-  const { loaded, error: skError, output, run, canvasRef } = useSkulptRunner();
+  const {
+    loaded,
+    error: skError,
+    output,
+    run,
+    stop,
+    canvasRef,
+  } = useSkulptRunner();
 
   function collectAncestorIds(
     nodes: TreeViewElement[],
@@ -1034,6 +1041,14 @@ export default function PrivateCode({ loaderData }: Route.ComponentProps) {
             disabled={!loaded || !!skError || !selectedId}
           >
             실행
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => stop()}
+            disabled={!selectedId}
+          >
+            정지
           </Button>
         </div>
 

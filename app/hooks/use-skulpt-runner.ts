@@ -12,6 +12,8 @@ export function useSkulptRunner(preId: string = "skulpt-output") {
   const { loaded, error } = useSkulpt();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [output, setOutput] = useState<string>("");
+  const currentRunIdRef = useRef<number>(0);
+  const runCounterRef = useRef<number>(0);
 
   const run = (code: string) => {
     // 안전성 체크
@@ -29,11 +31,14 @@ export function useSkulptRunner(preId: string = "skulpt-output") {
       return;
     }
 
-    // 1) 출력 초기화
+    // 1) 출력 초기화 및 실행 세션 id 고정
     setOutput("");
+    const myRunId = ++runCounterRef.current;
+    currentRunIdRef.current = myRunId;
 
     // 2) Skulpt용 output 함수
     const outf = (text: string) => {
+      if (currentRunIdRef.current !== myRunId) return; // 정지/무효화된 실행 무시
       setOutput((prev) => prev + text);
     };
 
@@ -86,15 +91,28 @@ export function useSkulptRunner(preId: string = "skulpt-output") {
           window.Sk.importMainWithBody("<stdin>", false, code, true)
         )
         .then(() => {
-          console.log("Python 코드 실행 완료");
+          if (currentRunIdRef.current === myRunId) {
+            console.log("Python 코드 실행 완료");
+          }
         })
         .catch((err: any) => {
-          console.error("Python 실행 오류:", err);
-          outf("\n" + err.toString());
+          if (currentRunIdRef.current === myRunId) {
+            console.error("Python 실행 오류:", err);
+            outf("\n" + err.toString());
+          }
         });
     } catch (error) {
       console.error("Skulpt 설정 중 오류:", error);
       setOutput("실행 중 오류가 발생했습니다: " + error);
+    }
+  };
+
+  const stop = () => {
+    // 새 실행 id 로 무효화하여 이후 출력 무시
+    currentRunIdRef.current = runCounterRef.current + 1;
+    setOutput("");
+    if (canvasRef.current) {
+      canvasRef.current.innerHTML = "";
     }
   };
 
@@ -125,5 +143,5 @@ export function useSkulptRunner(preId: string = "skulpt-output") {
     return () => ro.disconnect();
   }, [canvasRef, loaded]);
 
-  return { loaded, error, output, run, canvasRef };
+  return { loaded, error, output, run, stop, canvasRef };
 }
