@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 import { Button } from "~/common/components/ui/button";
@@ -7,6 +7,28 @@ import { useSkulptRunner } from "~/hooks/use-skulpt-runner";
 export default function Playground() {
   const [code, setCode] = useState<string>("");
   const { loaded, error, output, run, stop, canvasRef } = useSkulptRunner();
+
+  const STORAGE_KEY = "playground:code";
+  const saveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved != null) setCode(saved);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = window.setTimeout(() => {
+        localStorage.setItem(STORAGE_KEY, code);
+      }, 300);
+    } catch {}
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    };
+  }, [code]);
 
   return (
     <div className="p-4 space-y-4">
