@@ -77,7 +77,7 @@ const menus = [
   },
 
   {
-    name: "수업듣기",
+    name: "학습",
     to: "/lessons/playground",
     items: [
       {
@@ -91,8 +91,8 @@ const menus = [
         to: "/lessons/playground",
       },
       {
-        name: "강의듣기",
-        description: "강의듣기",
+        name: "강의 입장",
+        description: "강의 입장",
         to: "/lessons/lesson",
       },
     ],

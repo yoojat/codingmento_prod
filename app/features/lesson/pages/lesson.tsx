@@ -365,7 +365,7 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
         <div className="p-6 max-w-none w-full">
           {!isWelcomeHidden && (
             <div className="space-y-4 mb-10">
-              <h2 className="text-2xl font-bold">다중 사용자 영상 채팅</h2>
+              <h2 className="text-2xl font-bold">강의 입장</h2>
               <p>버튼을 누르면 자동으로 입장합니다.</p>
               {availableRooms.length > 1 ? (
                 <div className="flex items-center gap-2">
