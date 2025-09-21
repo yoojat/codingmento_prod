@@ -11,7 +11,6 @@ export default [
   ...prefix("/lessons", [
     route("/playground", "features/lesson/pages/playground.tsx"),
     route("/lesson", "features/lesson/pages/lesson.tsx"),
-    route("/lesson2", "features/lesson/pages/lesson2.tsx"),
     route("/private-code", "features/lesson/pages/private-code.tsx"),
     route(
       "/private-code-content/:fileId",
@@ -34,6 +33,7 @@ export default [
     route("/search", "features/teacher/pages/search-page.tsx"),
     route("/student/:profile_id", "features/teacher/pages/student-info.tsx"),
     route("/submit-lesson-log", "features/teacher/pages/submit-lesson-log.tsx"),
+    route("/lesson-manage", "features/teacher/pages/lesson_manage.tsx"),
   ]),
   ...prefix("/my", [
     layout("features/users/layouts/dashboard-layout.tsx", [

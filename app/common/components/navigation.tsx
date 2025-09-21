@@ -129,6 +129,11 @@ const menus = [
         description: "학생 검색",
         to: "/teacher/search",
       },
+      {
+        name: "수업 관리",
+        description: "수업 관리",
+        to: "/teacher/lesson-manage",
+      },
     ],
   },
 ];

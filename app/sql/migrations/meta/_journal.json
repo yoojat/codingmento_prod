@@ -36,6 +36,13 @@
       "when": 1757833672705,
       "tag": "0004_lyrical_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1758437146729,
+      "tag": "0005_steady_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

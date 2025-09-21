@@ -86,6 +86,85 @@ export type Database = {
           },
         ]
       }
+      lesson_group_students: {
+        Row: {
+          created_at: string
+          lesson_group_id: number
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          lesson_group_id: number
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          lesson_group_id?: number
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_group_students_lesson_group_id_lesson_groups_id_fk"
+            columns: ["lesson_group_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_group_students_student_id_profiles_profile_id_fk"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "lesson_group_students_student_id_profiles_profile_id_fk"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      lesson_groups: {
+        Row: {
+          created_at: string
+          id: number
+          name: string | null
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          name?: string | null
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          name?: string | null
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_groups_teacher_id_profiles_profile_id_fk"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "lesson_groups_teacher_id_profiles_profile_id_fk"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "students_view"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       lesson_logs: {
         Row: {
           class_vibe: string | null

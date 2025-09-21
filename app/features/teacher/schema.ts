@@ -1,4 +1,11 @@
-import { pgTable, bigint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  bigint,
+  text,
+  timestamp,
+  uuid,
+  primaryKey,
+} from "drizzle-orm/pg-core";
 import { profiles } from "~/features/users/schema";
 import { payments } from "../lessonmanagement/schema";
 
@@ -33,3 +40,29 @@ export const lessonLogs = pgTable("lesson_logs", {
   created_at: timestamp().notNull().defaultNow(),
   updated_at: timestamp().notNull().defaultNow(),
 });
+
+export const lessonGroups = pgTable("lesson_groups", {
+  id: bigint({ mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
+  teacher_id: uuid()
+    .references(() => profiles.profile_id)
+    .notNull(),
+  name: text(),
+  created_at: timestamp().notNull().defaultNow(),
+  updated_at: timestamp().notNull().defaultNow(),
+});
+
+export const lessonGroupStudents = pgTable(
+  "lesson_group_students",
+  {
+    lesson_group_id: bigint({ mode: "bigint" })
+      .references(() => lessonGroups.id)
+      .notNull(),
+    student_id: uuid()
+      .references(() => profiles.profile_id)
+      .notNull(),
+    created_at: timestamp().notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.lesson_group_id, t.student_id] }),
+  })
+);
