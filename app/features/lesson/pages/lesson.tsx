@@ -676,7 +676,20 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                     <CodeMirror
                       value={contentFetcher.data?.content ?? ""}
                       height="420px"
-                      onChange={(value) => setContent(value)}
+                      onChange={(value) => {
+                        setContent(value);
+                        // broadcast my editor content to peers
+                        for (const dc of dataChannels.current.values()) {
+                          if (dc.readyState === "open") {
+                            dc.send(
+                              JSON.stringify({
+                                type: "editor",
+                                data: { userId: myUserId, content: value },
+                              })
+                            );
+                          }
+                        }
+                      }}
                       basicSetup={{
                         lineNumbers: true,
                         highlightActiveLine: true,
@@ -723,16 +736,30 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
               <div className="flex-1 bg-gray-50 p-0 main-content">
                 {/* 사용자별 에디터 그리드: 최대 2열, 가로 폭 최대 사용 */}
                 <div className="grid gap-0 md:gap-0 grid-cols-1 md:grid-cols-2 w-full">
-                  {/* 원격 사용자 에디터들 */}
+                  {/* 원격 사용자 에디터들: 읽기 전용 CodeMirror */}
                   {Array.from(connectedUsers.entries()).map(([uid, u]) => (
-                    <UserEditor
+                    <div
                       key={uid}
-                      userId={uid}
-                      nickname={u.nickname}
-                      value={editorContents.get(uid) ?? ""}
-                      readOnly
-                      showIdSuffix={isHydrated}
-                    />
+                      className="bg-white rounded-lg shadow p-0 border flex flex-col"
+                    >
+                      <div className="p-3 space-y-3">
+                        <div className="mb-2 text-sm font-medium text-gray-700">
+                          {u.nickname}
+                          {isHydrated ? ` — ${uid.slice(-6)}` : null}
+                        </div>
+                        <CodeMirror
+                          value={editorContents.get(uid) ?? ""}
+                          height="280px"
+                          readOnly
+                          basicSetup={{
+                            lineNumbers: true,
+                            highlightActiveLine: true,
+                            highlightActiveLineGutter: true,
+                            indentOnInput: true,
+                          }}
+                        />
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -749,104 +776,5 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
         </div>
       </SidebarInset>
     </SidebarProvider>
-  );
-}
-
-interface UserEditorProps {
-  userId: string;
-  nickname: string;
-  value: string;
-  onChange?: (next: string) => void;
-  readOnly?: boolean;
-  showIdSuffix?: boolean;
-  header?: React.ReactNode;
-}
-
-function UserEditor({
-  userId,
-  nickname,
-  value,
-  onChange,
-  readOnly,
-  showIdSuffix = false,
-  header,
-}: UserEditorProps) {
-  const preId = showIdSuffix ? `skulpt-output-${userId}` : "skulpt-output-ssr";
-  const { loaded, error, output, run, canvasRef } = useSkulptRunner(preId);
-
-  const runKeymap = keymap.of([
-    {
-      key: "Mod-Enter",
-      run: () => {
-        run(value);
-        return true;
-      },
-    },
-  ]);
-  const defaultKeymapExt = keymap.of(defaultKeymap);
-  const historyKeymapExt = keymap.of(historyKeymap);
-
-  return (
-    <div className="bg-white rounded-lg shadow p-0 border flex flex-col">
-      {/* Top bar placeholder to keep equal height across editors */}
-      <div className="min-h-12">{header}</div>
-      <div className="p-3 space-y-3">
-        <div className="mb-2 text-sm font-medium text-gray-700">
-          {nickname}
-          {showIdSuffix ? ` — ${userId.slice(-6)}` : null}
-        </div>
-        <CodeMirror
-          value={value}
-          height="420px"
-          onChange={(v) => onChange?.(v)}
-          readOnly={!!readOnly}
-          basicSetup={{
-            lineNumbers: true,
-            highlightActiveLine: true,
-            highlightActiveLineGutter: true,
-            indentOnInput: true,
-            // bracketMatching: true,
-            // foldGutter: true,
-            // defaultKeymap: false,
-            // history: true,
-            // allowMultipleSelections: true,
-          }}
-          theme="light"
-          style={{ border: "1px solid #ddd" }}
-          extensions={[python()]}
-        />
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => run(value)}
-            disabled={!loaded || !!error}
-            size="sm"
-          >
-            ▶️ Run
-          </Button>
-          {!loaded && !error && (
-            <span className="text-xs text-gray-500">Skulpt 로딩 중…</span>
-          )}
-          {error && (
-            <span className="text-xs text-red-600">Skulpt 로딩 실패</span>
-          )}
-        </div>
-        <div>
-          <h4 className="mb-1 text-xs font-semibold text-gray-700">콘솔</h4>
-          <pre
-            id={preId}
-            className="p-2 bg-gray-100 rounded text-xs overflow-auto max-h-32"
-          >
-            {output}
-          </pre>
-        </div>
-        <div>
-          <h4 className="mb-1 text-xs font-semibold text-gray-700">Turtle</h4>
-          <div
-            ref={canvasRef}
-            className="w-full border border-gray-200 rounded"
-          />
-        </div>
-      </div>
-    </div>
   );
 }
