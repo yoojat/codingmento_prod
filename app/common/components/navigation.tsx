@@ -283,7 +283,7 @@ export default function Navigation({
 
       {isLoggedIn ? (
         <div className="flex items-center gap-2 sm:gap-4">
-          <Button size="icon" variant="ghost" asChild className="relative">
+          {/* <Button size="icon" variant="ghost" asChild className="relative">
             <Link to="/my/notifications">
               <BellIcon className="size-4" />
               {hasNotifications && (
@@ -298,7 +298,7 @@ export default function Navigation({
                 <div className="absolute top-1.5 right-1.5 size-2 bg-red-500 rounded-full" />
               )}
             </Link>
-          </Button>
+          </Button> */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Avatar className="h-8 w-8 sm:h-10 sm:w-10">

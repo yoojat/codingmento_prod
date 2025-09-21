@@ -11,6 +11,15 @@ import { Badge } from "~/common/components/ui/badge";
 import { Button } from "~/common/components/ui/button";
 import { Separator } from "~/common/components/ui/separator";
 
+import {
+  loadTossPayments,
+  type TossPaymentsWidgets,
+} from "@tosspayments/tosspayments-sdk";
+import { makeSSRClient } from "~/supa-client";
+import { getLoggedInUserId } from "~/features/users/queries";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "~/lib/utils";
+
 interface PaymentReceipt {
   id: string;
   date: string; // ISO
@@ -31,7 +40,10 @@ export const meta: Route.MetaFunction = () => {
   ];
 };
 
-export function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
+  const { client } = makeSSRClient(request);
+  const userId = await getLoggedInUserId(client);
+
   // Mock: 수업 진행/결제 상태
   const pricePerLesson = 30000; // KRW
   const lessonsDoneThisCycle = 7;
@@ -69,6 +81,7 @@ export function loader({ request }: Route.LoaderArgs) {
   ];
 
   return {
+    userId,
     pricePerLesson,
     lessonsDoneThisCycle,
     lessonsAlreadyPaid,
@@ -88,6 +101,7 @@ export async function action({ request }: Route.ActionArgs) {
   const amount = Number(formData.get("amount"));
   const lessons = Number(formData.get("lessons"));
   const kind = String(formData.get("kind") || "due");
+
   // TODO: 결제 게이트웨이 연동. 현재는 성공 가정
   return {
     ok: true,
@@ -114,6 +128,7 @@ export default function LessonPayment({
   actionData,
 }: Route.ComponentProps) {
   const {
+    userId,
     pricePerLesson,
     lessonsDoneThisCycle,
     lessonsAlreadyPaid,
@@ -124,9 +139,44 @@ export default function LessonPayment({
     futurePrepayLessons,
     futurePrepayAmount,
     receipts,
-  } = loaderData as ReturnType<typeof loader>;
+  } = loaderData;
 
   const isPaymentNeeded = dueLessons > 0;
+
+  const widgets = useRef<TossPaymentsWidgets | null>(null);
+
+  useEffect(() => {
+    const initToss = async () => {
+      const clientKey = "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm";
+
+      const toss = await loadTossPayments(clientKey);
+      widgets.current = (await toss).widgets({
+        customerKey: userId,
+      });
+      await widgets.current.setAmount({
+        value: dueAmount,
+        currency: "KRW",
+      });
+      await widgets.current.renderPaymentMethods({
+        selector: "#toss-payment-methods",
+      });
+      await widgets.current.renderAgreement({
+        selector: "#toss-payment-agreement",
+      });
+    };
+    initToss();
+  }, [userId, dueAmount]);
+
+  useEffect(() => {
+    if (widgets.current) {
+      widgets.current.setAmount({
+        value: dueAmount,
+        currency: "KRW",
+      });
+    }
+  }, [dueAmount]);
+
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -182,50 +232,36 @@ export default function LessonPayment({
           </div>
         </CardContent>
         <CardFooter className="justify-between gap-3 flex-col sm:flex-row">
-          <Form
-            method="post"
-            className="flex items-center gap-2 w-full sm:w-auto"
-          >
-            <input type="hidden" name="kind" value="due" readOnly />
-            <input type="hidden" name="amount" value={dueAmount} readOnly />
-            <input type="hidden" name="lessons" value={dueLessons} readOnly />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
-              type="submit"
+              onClick={() => setIsPaymentModalOpen(true)}
               size="lg"
               className="w-full sm:w-auto"
               disabled={!isPaymentNeeded}
             >
               {isPaymentNeeded ? "미납 결제하기" : "미납 없음"}
             </Button>
-          </Form>
-          <Form
-            method="post"
-            className="flex items-center gap-2 w-full sm:w-auto"
-          >
-            <input type="hidden" name="kind" value="prepay" readOnly />
-            <input
-              type="hidden"
-              name="amount"
-              value={futurePrepayAmount}
-              readOnly
-            />
-            <input
-              type="hidden"
-              name="lessons"
-              value={futurePrepayLessons}
-              readOnly
-            />
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
-              type="submit"
               variant="secondary"
               size="lg"
               className="w-full sm:w-auto"
+              onClick={() => setIsPaymentModalOpen(true)}
             >
               다음 {futurePrepayLessons}회 선납 결제
             </Button>
-          </Form>
+          </div>
         </CardFooter>
       </Card>
+
+      <div className={cn("hidden", isPaymentModalOpen && "block")}>
+        <div id="toss-payment-methods" />
+        <div id="toss-payment-agreement" />
+        <Button className="w-full">
+          {dueAmount.toLocaleString("ko-KR")}원 결제하기
+        </Button>
+      </div>
 
       {actionData?.ok ? (
         <Card className="border-green-600/30">
@@ -239,7 +275,7 @@ export default function LessonPayment({
         </Card>
       ) : null}
 
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>영수증 내역</CardTitle>
         </CardHeader>
@@ -275,7 +311,7 @@ export default function LessonPayment({
             </div>
           ))}
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }

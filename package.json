@@ -34,6 +34,7 @@
     "@socket.io/admin-ui": "^0.5.1",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.56.0",
+    "@tosspayments/tosspayments-sdk": "^2.4.0",
     "@types/react-router-dom": "^5.3.3",
     "@types/uuid": "^10.0.0",
     "@uiw/react-codemirror": "^4.24.2",
