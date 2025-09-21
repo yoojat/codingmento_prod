@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSocket } from "../../../hooks/use-socket";
 import { useRoomSignaling } from "../../../hooks/use-room-signaling";
-import { Input } from "~/common/components/ui/input";
+// import { Input } from "~/common/components/ui/input";
 import { Button } from "~/common/components/ui/button";
 import {
   SidebarProvider,
@@ -58,7 +58,46 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     .eq("profile_id", userId)
     .order("updated_at", { ascending: false });
   if (fileError) throw new Error(fileError.message);
-  return { elements: toTreeElements(files ?? []) };
+  // preset nickname from profile
+  const { data: profile } = await client
+    .from("profiles")
+    .select("name")
+    .eq("profile_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  // preset room from lesson group membership (student), fallback to teacher's latest group
+  let groupName: string | null = null;
+  const { data: membership } = await (client as any)
+    .from("lesson_group_students")
+    .select("lesson_group_id")
+    .eq("student_id", userId)
+    .limit(1)
+    .maybeSingle();
+  if (membership?.lesson_group_id != null) {
+    const { data: group } = await (client as any)
+      .from("lesson_groups")
+      .select("name")
+      .eq("id", Number(membership.lesson_group_id))
+      .limit(1)
+      .maybeSingle();
+    groupName = group?.name ?? null;
+  } else {
+    const { data: tgroup } = await (client as any)
+      .from("lesson_groups")
+      .select("name")
+      .eq("teacher_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    groupName = tgroup?.name ?? null;
+  }
+
+  return {
+    elements: toTreeElements(files ?? []),
+    presetRoomName: groupName,
+    presetNickname: profile?.name ?? null,
+  };
 };
 
 export const action = async ({ request }: Route.ActionArgs) => {
@@ -80,10 +119,18 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
   const [myNickname, setMyNickname] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => setIsHydrated(true), []);
-
   // 파일
-  const { elements } = loaderData as unknown as { elements: TreeViewElement[] };
+  const { elements, presetRoomName, presetNickname } =
+    loaderData as unknown as {
+      elements: TreeViewElement[];
+      presetRoomName: string | null;
+      presetNickname: string | null;
+    };
   const fileTree = useFileTree(elements);
+  useEffect(() => {
+    if (presetRoomName) setInputRoomName(presetRoomName);
+    if (presetNickname) setInputNickname(presetNickname);
+  }, [presetRoomName, presetNickname]);
   const [saveInfo, setSaveInfo] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [selectedName, setSelectedName] = useState<string>("");
@@ -154,6 +201,7 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
 
   const handleWelcomeSubmit = useCallback(
     async (e: React.FormEvent) => {
+      console.log("handleWelcomeSubmit", inputRoomName, inputNickname);
       e.preventDefault();
       if (!inputRoomName.trim() || !inputNickname.trim() || !socket) return;
 
@@ -172,9 +220,6 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
         userId: myUserId,
         nickname: nickname,
       });
-
-      setInputNickname("");
-      setInputRoomName("");
     },
     [inputNickname, inputRoomName, socket, myUserId]
   );
@@ -317,31 +362,24 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
           {!isWelcomeHidden && (
             <div className="space-y-4 mb-10">
               <h2 className="text-2xl font-bold">다중 사용자 영상 채팅</h2>
-              <p>방번호와 닉네임을 입력해주세요.</p>
-              <form onSubmit={handleWelcomeSubmit} className="space-y-3">
-                <Input
-                  type="text"
-                  placeholder="방번호를 입력하세요"
-                  value={inputRoomName}
-                  onChange={(e) => setInputRoomName(e.target.value)}
-                  className="flex-1"
-                  required
-                />
-                <Input
-                  type="text"
-                  placeholder="닉네임을 입력하세요"
-                  value={inputNickname}
-                  onChange={(e) => setInputNickname(e.target.value)}
-                  required
-                />
-                <Button
-                  type="submit"
-                  disabled={!socket}
-                  className="w-full cursor-pointer"
-                >
-                  입장
-                </Button>
-              </form>
+              <p>버튼을 누르면 자동으로 입장합니다.</p>
+              <div className="text-sm text-muted-foreground">
+                방:{" "}
+                {presetRoomName ??
+                  "현재 입장할 수 없습니다. 담당 선생님에게 문의 해주세요."}{" "}
+                / 이름:{" "}
+                {presetNickname ??
+                  "이름이 없습니다. 담당 선생님에게 문의 해주세요."}
+              </div>
+              <Button
+                onClick={(e) =>
+                  handleWelcomeSubmit(e as unknown as React.FormEvent)
+                }
+                disabled={!socket || !presetRoomName || !presetNickname}
+                className="w-full cursor-pointer"
+              >
+                입장
+              </Button>
             </div>
           )}
 
