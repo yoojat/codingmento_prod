@@ -337,6 +337,30 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
     [inputNickname, inputRoomName, socket, myUserId]
   );
 
+  const handleLeaveRoom = useCallback(() => {
+    try {
+      // stop local media
+      if (myStreamRef.current) {
+        myStreamRef.current.getTracks().forEach((t) => t.stop());
+        myStreamRef.current = null;
+      }
+      if (myFaceRef.current) {
+        myFaceRef.current.srcObject = null;
+      }
+      // cleanup webrtc
+      cleanupAllConnections();
+      // notify server/peers
+      socket?.emit("user_left", myUserId);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      // reset UI state
+      setConnectedUsers(new Map());
+      setIsWelcomeHidden(false);
+      setRoomName("");
+    }
+  }, [cleanupAllConnections, socket, myUserId]);
+
   // 채팅 메시지 전송
   const handleSendMessage = useCallback(
     (messageText: string) => {
@@ -663,6 +687,11 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
               {selectedName ? `${selectedName}` : "파일을 선택하세요"}
             </div>
             <div className="flex-1" />
+            {isWelcomeHidden && (
+              <Button size="sm" variant="destructive" onClick={handleLeaveRoom}>
+                방 나가기
+              </Button>
+            )}
             <Button
               size="sm"
               variant="secondary"
