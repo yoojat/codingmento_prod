@@ -38,6 +38,12 @@ import type { Route } from "./+types/lesson";
 import { RenderTree } from "../components/render-tree";
 import { useFetcher } from "react-router";
 import { handleFileAction } from "~/features/lesson/actions";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "~/common/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "~/common/components/ui/dropdown-menu";
 
 interface UserState {
   nickname: string;
@@ -401,6 +407,114 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
             className="relative h-full"
             onContextMenu={fileTree.handleEmptyAreaContextMenu}
           >
+            <DropdownMenu
+              open={fileTree.ctxOpen}
+              onOpenChange={fileTree.setCtxOpen}
+            >
+              <DropdownMenuTrigger asChild>
+                <button
+                  ref={fileTree.triggerRef}
+                  style={{
+                    position: "absolute",
+                    left: fileTree.ctxPos.x,
+                    top: fileTree.ctxPos.y,
+                    width: 1,
+                    height: 1,
+                    opacity: 0,
+                    pointerEvents: fileTree.ctxOpen ? "auto" : "none",
+                  }}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {fileTree.ctxTarget === "empty" && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        fileTree.startCreateRootFolder();
+                        fileTree.setCtxOpen(false);
+                      }}
+                    >
+                      새폴더
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        fileTree.startCreateRootFileBottom();
+                        fileTree.setCtxOpen(false);
+                      }}
+                    >
+                      새파일
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {fileTree.ctxTarget === "folder" && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (fileTree.ctxTargetId)
+                          fileTree.requestRename(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
+                      }}
+                    >
+                      이름바꾸기
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (fileTree.ctxTargetId)
+                          fileTree.startCreateChildFolder(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
+                      }}
+                    >
+                      새폴더
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (fileTree.ctxTargetId)
+                          fileTree.startCreateChildFile(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
+                      }}
+                    >
+                      새파일
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        if (fileTree.ctxTargetId)
+                          fileTree.submitDeleteFolder(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
+                      }}
+                    >
+                      삭제
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {fileTree.ctxTarget === "file" && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (fileTree.ctxTargetId)
+                          fileTree.requestRename(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
+                      }}
+                    >
+                      이름바꾸기
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        if (fileTree.ctxTargetId)
+                          fileTree.submitDelete(fileTree.ctxTargetId);
+                        fileTree.setCtxOpen(false);
+                      }}
+                    >
+                      삭제
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Tree
               className="overflow-hidden rounded-md bg-background p-2"
               initialExpandedItems={fileTree.expandedIds}
