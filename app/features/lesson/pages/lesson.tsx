@@ -153,6 +153,7 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
     stop,
     canvasRef,
   } = useSkulptRunner();
+  const lastBroadcastRef = useRef<string>("");
   // Compact local media controls for editor overlay
   const [isMutedLocal, setIsMutedLocal] = useState(false);
   const [isCameraOffLocal, setIsCameraOffLocal] = useState(false);
@@ -263,6 +264,22 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
     setEditorContents,
     getLocalEditorContent: () => editorContents.get(myUserId) ?? "",
   });
+  // Broadcast helpers for editor sync (now can reference dataChannels)
+  const broadcastContent = useCallback(
+    (value: string) => {
+      for (const dc of dataChannels.current.values()) {
+        if (dc.readyState === "open") {
+          dc.send(
+            JSON.stringify({
+              type: "editor",
+              data: { userId: myUserId, content: value },
+            })
+          );
+        }
+      }
+    },
+    [dataChannels, myUserId]
+  );
 
   // WebRTC 시그널링 훅으로 분리
   useRoomSignaling({
@@ -367,6 +384,31 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
       setSelectedName(contentFetcher.data.name ?? "");
     }
   }, [contentFetcher.state, contentFetcher.data]);
+
+  // After content changes or file selection changes, broadcast a snapshot once
+  useEffect(() => {
+    if (!isWelcomeHidden) return;
+    const selectedKey = fileTree.selectedId ?? "(none)";
+    const sig = `${selectedKey}|${content.length}`;
+    if (sig !== lastBroadcastRef.current) {
+      broadcastContent(content);
+      lastBroadcastRef.current = sig;
+    }
+  }, [isWelcomeHidden, content, fileTree.selectedId, broadcastContent]);
+
+  // On room join, broadcast current snapshot after channels likely opened
+  useEffect(() => {
+    if (!isWelcomeHidden) return;
+    const t = setTimeout(() => broadcastContent(content), 200);
+    return () => clearTimeout(t);
+  }, [isWelcomeHidden, broadcastContent, content]);
+
+  // When participants change (new user joins), rebroadcast snapshot
+  useEffect(() => {
+    if (!isWelcomeHidden) return;
+    const t = setTimeout(() => broadcastContent(content), 150);
+    return () => clearTimeout(t);
+  }, [isWelcomeHidden, connectedUsers.size, broadcastContent, content]);
 
   // 저장 제출 및 표시
   function submitSave() {
@@ -679,16 +721,7 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                       onChange={(value) => {
                         setContent(value);
                         // broadcast my editor content to peers
-                        for (const dc of dataChannels.current.values()) {
-                          if (dc.readyState === "open") {
-                            dc.send(
-                              JSON.stringify({
-                                type: "editor",
-                                data: { userId: myUserId, content: value },
-                              })
-                            );
-                          }
-                        }
+                        broadcastContent(value);
                       }}
                       basicSetup={{
                         lineNumbers: true,
