@@ -73,6 +73,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     .maybeSingle();
   // available rooms: for students: their membership; for teachers: all their groups
   let availableRooms: string[] = [];
+  let teacherName: string | null = null;
   if (profile?.is_teacher) {
     const { data: groups } = await (client as any)
       .from("lesson_groups")
@@ -82,6 +83,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     availableRooms = (groups ?? [])
       .map((g: any) => g?.name as string | null)
       .filter((n: string | null): n is string => !!n);
+    teacherName = profile?.name ?? null;
   } else {
     const { data: membership } = await (client as any)
       .from("lesson_group_students")
@@ -92,11 +94,20 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     if (membership?.lesson_group_id != null) {
       const { data: group } = await (client as any)
         .from("lesson_groups")
-        .select("name")
+        .select("name,teacher_id")
         .eq("id", Number(membership.lesson_group_id))
         .limit(1)
         .maybeSingle();
       if (group?.name) availableRooms = [group.name];
+      if (group?.teacher_id) {
+        const { data: t } = await client
+          .from("profiles")
+          .select("name")
+          .eq("profile_id", group.teacher_id)
+          .limit(1)
+          .maybeSingle();
+        teacherName = t?.name ?? null;
+      }
     }
   }
 
@@ -105,6 +116,8 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     availableRooms,
     presetRoomName: availableRooms[0] ?? null,
     presetNickname: profile?.name ?? null,
+    teacherName,
+    isTeacher: !!profile?.is_teacher,
   };
 };
 
@@ -128,13 +141,21 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => setIsHydrated(true), []);
   // 파일
-  const { elements, presetRoomName, presetNickname, availableRooms } =
-    loaderData as unknown as {
-      elements: TreeViewElement[];
-      presetRoomName: string | null;
-      presetNickname: string | null;
-      availableRooms: string[];
-    };
+  const {
+    elements,
+    presetRoomName,
+    presetNickname,
+    availableRooms,
+    teacherName,
+    isTeacher,
+  } = loaderData as unknown as {
+    elements: TreeViewElement[];
+    presetRoomName: string | null;
+    presetNickname: string | null;
+    availableRooms: string[];
+    teacherName: string | null;
+    isTeacher: boolean;
+  };
   const fileTree = useFileTree(elements);
   useEffect(() => {
     if (presetRoomName) setInputRoomName(presetRoomName);
@@ -435,6 +456,15 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
     }
   }, [saveFetcher.state, saveFetcher.data]);
 
+  // Resolve teacher's uid in current room by matching nickname
+  const teacherUid = useMemo(() => {
+    if (!teacherName) return null;
+    for (const [uid, u] of connectedUsers.entries()) {
+      if (u.nickname === teacherName) return uid;
+    }
+    return null;
+  }, [connectedUsers, teacherName]);
+
   return (
     <SidebarProvider>
       <Sidebar>
@@ -661,77 +691,105 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
           <div className="p-4">
             <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground grid grid-cols-1  gap-4">
               <div>
-                <div className="relative">
-                  <h4 className="mb-1 text-xs font-semibold text-gray-700">
-                    {saveInfo ? (
-                      <div className="mb-2 text-xs text-green-600">
-                        {saveInfo}
-                      </div>
-                    ) : (
-                      "editor"
-                    )}
-                  </h4>
-                  {isWelcomeHidden && (
-                    <div className="absolute top-2 right-2 z-20 flex flex-col items-end gap-1">
-                      <div className="relative">
-                        <video
-                          ref={myFaceRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="w-40 h-28 object-cover rounded-md border border-gray-300 bg-gray-800 shadow"
-                          style={{ transform: "scaleX(-1)" }}
-                        />
-                        {isCameraOffLocal && (
-                          <div className="absolute inset-0 bg-black/60 rounded-md flex items-center justify-center">
-                            <span className="text-white text-[10px]">
-                              Camera Off
-                            </span>
+                {contentFetcher.state === "loading" ? (
+                  "Loading..."
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="relative">
+                      <h4 className="mb-1 text-xs font-semibold text-gray-700">
+                        {saveInfo ? (
+                          <div className="mb-2 text-xs text-green-600">
+                            {saveInfo}
                           </div>
+                        ) : (
+                          "editor"
                         )}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          variant={isMutedLocal ? "destructive" : "secondary"}
-                          onClick={toggleMuteLocal}
-                        >
-                          {isMutedLocal ? "🔇" : "🎤"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          variant={
-                            isCameraOffLocal ? "destructive" : "secondary"
-                          }
-                          onClick={toggleCameraLocal}
-                        >
-                          {isCameraOffLocal ? "📷" : "📹"}
-                        </Button>
-                      </div>
+                      </h4>
+                      <CodeMirror
+                        value={contentFetcher.data?.content ?? ""}
+                        height="420px"
+                        onChange={(value) => {
+                          setContent(value);
+                          // broadcast my editor content to peers
+                          broadcastContent(value);
+                        }}
+                        basicSetup={{
+                          lineNumbers: true,
+                          highlightActiveLine: true,
+                          highlightActiveLineGutter: true,
+                          indentOnInput: true,
+                        }}
+                      />
+
+                      {isWelcomeHidden && (
+                        <div className="absolute top-2 right-2 z-20 flex flex-col items-end gap-1">
+                          <div className="relative">
+                            <video
+                              ref={myFaceRef}
+                              autoPlay
+                              playsInline
+                              muted
+                              className="w-40 h-28 object-cover rounded-md border border-gray-300 bg-gray-800 shadow"
+                              style={{ transform: "scaleX(-1)" }}
+                            />
+                            {isCameraOffLocal && (
+                              <div className="absolute inset-0 bg-black/60 rounded-md flex items-center justify-center">
+                                <span className="text-white text-[10px]">
+                                  Camera Off
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              variant={
+                                isMutedLocal ? "destructive" : "secondary"
+                              }
+                              onClick={toggleMuteLocal}
+                            >
+                              {isMutedLocal ? "🔇" : "🎤"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              variant={
+                                isCameraOffLocal ? "destructive" : "secondary"
+                              }
+                              onClick={toggleCameraLocal}
+                            >
+                              {isCameraOffLocal ? "📷" : "📹"}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {contentFetcher.state === "loading" ? (
-                    "Loading..."
-                  ) : (
-                    <CodeMirror
-                      value={contentFetcher.data?.content ?? ""}
-                      height="420px"
-                      onChange={(value) => {
-                        setContent(value);
-                        // broadcast my editor content to peers
-                        broadcastContent(value);
-                      }}
-                      basicSetup={{
-                        lineNumbers: true,
-                        highlightActiveLine: true,
-                        highlightActiveLineGutter: true,
-                        indentOnInput: true,
-                      }}
-                    />
-                  )}
-                </div>
+                    <div>
+                      {/* Teacher editor on the right, only for students and when teacher is connected */}
+                      {isWelcomeHidden && !isTeacher && teacherUid && (
+                        <div className="bg-white rounded-lg shadow p-0 border">
+                          <div className="p-3">
+                            <div className="mb-2 text-sm font-medium text-gray-700">
+                              선생님: {teacherName}
+                            </div>
+                            <CodeMirror
+                              value={editorContents.get(teacherUid) ?? ""}
+                              height="420px"
+                              readOnly
+                              basicSetup={{
+                                lineNumbers: true,
+                                highlightActiveLine: true,
+                                highlightActiveLineGutter: true,
+                                indentOnInput: true,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-3">
                   <h4 className="mb-1 text-xs font-semibold text-gray-700">
@@ -768,32 +826,58 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
               {/* 메인 콘텐츠 영역 */}
               <div className="flex-1 bg-gray-50 p-0 main-content">
                 {/* 사용자별 에디터 그리드: 최대 2열, 가로 폭 최대 사용 */}
-                <div className="grid gap-0 md:gap-0 grid-cols-1 md:grid-cols-2 w-full">
-                  {/* 원격 사용자 에디터들: 읽기 전용 CodeMirror */}
-                  {Array.from(connectedUsers.entries()).map(([uid, u]) => (
-                    <div
-                      key={uid}
-                      className="bg-white rounded-lg shadow p-0 border flex flex-col"
-                    >
-                      <div className="p-3 space-y-3">
-                        <div className="mb-2 text-sm font-medium text-gray-700">
-                          {u.nickname}
-                          {isHydrated ? ` — ${uid.slice(-6)}` : null}
-                        </div>
-                        <CodeMirror
-                          value={editorContents.get(uid) ?? ""}
-                          height="280px"
-                          readOnly
-                          basicSetup={{
-                            lineNumbers: true,
-                            highlightActiveLine: true,
-                            highlightActiveLineGutter: true,
-                            indentOnInput: true,
-                          }}
-                        />
+                <div className="grid gap-4 grid-cols-2 w-full">
+                  {/* 내 에디터 */}
+                  <div className="bg-white rounded-lg shadow p-0 border flex flex-col">
+                    <div className="p-3 space-y-3">
+                      <div className="mb-2 text-sm font-medium text-gray-700">
+                        {myNickname}
+                        {isHydrated ? ` — ${myUserId.slice(-6)}` : null}
                       </div>
+                      <CodeMirror
+                        value={editorContents.get(myUserId) ?? ""}
+                        height="280px"
+                        onChange={(value) => {
+                          setContent(value);
+                          broadcastContent(value);
+                        }}
+                        basicSetup={{
+                          lineNumbers: true,
+                          highlightActiveLine: true,
+                          highlightActiveLineGutter: true,
+                          indentOnInput: true,
+                        }}
+                      />
                     </div>
-                  ))}
+                  </div>
+
+                  {/* 원격 사용자 에디터들: 읽기 전용 CodeMirror */}
+                  {Array.from(connectedUsers.entries())
+                    .filter(([uid]) => uid !== teacherUid)
+                    .map(([uid, u]) => (
+                      <div
+                        key={uid}
+                        className="bg-white rounded-lg shadow p-0 border flex flex-col"
+                      >
+                        <div className="p-3 space-y-3">
+                          <div className="mb-2 text-sm font-medium text-gray-700">
+                            {u.nickname}
+                            {isHydrated ? ` — ${uid.slice(-6)}` : null}
+                          </div>
+                          <CodeMirror
+                            value={editorContents.get(uid) ?? ""}
+                            height="280px"
+                            readOnly
+                            basicSetup={{
+                              lineNumbers: true,
+                              highlightActiveLine: true,
+                              highlightActiveLineGutter: true,
+                              indentOnInput: true,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
 
