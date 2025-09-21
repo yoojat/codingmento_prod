@@ -852,7 +852,7 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                 {/* 사용자별 에디터 그리드: 최대 2열, 가로 폭 최대 사용 */}
                 <div className="grid gap-4 grid-cols-2 w-full">
                   {/* 내 에디터 */}
-                  <div className="bg-white rounded-lg shadow p-0 border flex flex-col">
+                  {/* <div className="bg-white rounded-lg shadow p-0 border flex flex-col">
                     <div className="p-3 space-y-3">
                       <div className="mb-2 text-sm font-medium text-gray-700">
                         {myNickname}
@@ -873,11 +873,11 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                         }}
                       />
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* 원격 사용자 에디터들: 읽기 전용 CodeMirror */}
                   {Array.from(connectedUsers.entries())
-                    .filter(([uid]) => uid !== teacherUid)
+                    .filter(([uid]) => uid !== teacherUid && uid !== myUserId)
                     .map(([uid, u]) => (
                       <div
                         key={uid}
