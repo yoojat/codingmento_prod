@@ -30,7 +30,7 @@ export default function SettingsPage() {
               required
               id="name"
               name="name"
-              placeholder="김태영"
+              placeholder="이름을 입력해주세요"
             />
 
             <InputPair
@@ -39,18 +39,10 @@ export default function SettingsPage() {
               required
               id="headline"
               name="headline"
-              placeholder="코딩멘토"
+              placeholder="자신에 대해서 소개해주세요"
               textArea
             />
-            <InputPair
-              label="소개"
-              description="공개 소개. 프로필 페이지에 표시됩니다."
-              required
-              id="bio"
-              name="bio"
-              placeholder="코딩멘토 소개"
-              textArea
-            />
+
             <Button className="w-full">프로필 수정</Button>
           </Form>
         </div>

@@ -4,6 +4,13 @@ import { useRoomSignaling } from "../../../hooks/use-room-signaling";
 // import { Input } from "~/common/components/ui/input";
 import { Button } from "~/common/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/common/components/ui/select";
+import {
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
@@ -15,17 +22,11 @@ import {
 import Chat from "../components/chat";
 import VideoControls from "../components/video-controls";
 import { usePeerConnections } from "../../../hooks/use-peer-connections";
-import { Textarea } from "~/common/components/ui/textarea";
 import { useSkulptRunner } from "~/hooks/use-skulpt-runner";
 import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 import { keymap } from "@codemirror/view";
 import { defaultKeymap, historyKeymap } from "@codemirror/commands";
-import FileExplorerSidebar, {
-  type FileNode,
-} from "~/features/lesson/components/file-explorer";
-import { SaveIcon } from "lucide-react";
-import { useFiles } from "~/hooks/use-files";
 import { useFileTree } from "../hooks/use-file-tree";
 import {
   Tree,
@@ -58,44 +59,46 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     .eq("profile_id", userId)
     .order("updated_at", { ascending: false });
   if (fileError) throw new Error(fileError.message);
-  // preset nickname from profile
+  // preset nickname from profile and role
   const { data: profile } = await client
     .from("profiles")
-    .select("name")
+    .select("name,is_teacher")
     .eq("profile_id", userId)
     .limit(1)
     .maybeSingle();
-
-  // preset room from lesson group membership (student), fallback to teacher's latest group
-  let groupName: string | null = null;
-  const { data: membership } = await (client as any)
-    .from("lesson_group_students")
-    .select("lesson_group_id")
-    .eq("student_id", userId)
-    .limit(1)
-    .maybeSingle();
-  if (membership?.lesson_group_id != null) {
-    const { data: group } = await (client as any)
-      .from("lesson_groups")
-      .select("name")
-      .eq("id", Number(membership.lesson_group_id))
-      .limit(1)
-      .maybeSingle();
-    groupName = group?.name ?? null;
-  } else {
-    const { data: tgroup } = await (client as any)
+  // available rooms: for students: their membership; for teachers: all their groups
+  let availableRooms: string[] = [];
+  if (profile?.is_teacher) {
+    const { data: groups } = await (client as any)
       .from("lesson_groups")
       .select("name")
       .eq("teacher_id", userId)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: false });
+    availableRooms = (groups ?? [])
+      .map((g: any) => g?.name as string | null)
+      .filter((n: string | null): n is string => !!n);
+  } else {
+    const { data: membership } = await (client as any)
+      .from("lesson_group_students")
+      .select("lesson_group_id")
+      .eq("student_id", userId)
       .limit(1)
       .maybeSingle();
-    groupName = tgroup?.name ?? null;
+    if (membership?.lesson_group_id != null) {
+      const { data: group } = await (client as any)
+        .from("lesson_groups")
+        .select("name")
+        .eq("id", Number(membership.lesson_group_id))
+        .limit(1)
+        .maybeSingle();
+      if (group?.name) availableRooms = [group.name];
+    }
   }
 
   return {
     elements: toTreeElements(files ?? []),
-    presetRoomName: groupName,
+    availableRooms,
+    presetRoomName: availableRooms[0] ?? null,
     presetNickname: profile?.name ?? null,
   };
 };
@@ -120,11 +123,12 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => setIsHydrated(true), []);
   // 파일
-  const { elements, presetRoomName, presetNickname } =
+  const { elements, presetRoomName, presetNickname, availableRooms } =
     loaderData as unknown as {
       elements: TreeViewElement[];
       presetRoomName: string | null;
       presetNickname: string | null;
+      availableRooms: string[];
     };
   const fileTree = useFileTree(elements);
   useEffect(() => {
@@ -363,13 +367,32 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
             <div className="space-y-4 mb-10">
               <h2 className="text-2xl font-bold">다중 사용자 영상 채팅</h2>
               <p>버튼을 누르면 자동으로 입장합니다.</p>
+              {availableRooms.length > 1 ? (
+                <div className="flex items-center gap-2">
+                  <div className="text-sm">방 선택</div>
+                  <Select
+                    value={inputRoomName}
+                    onValueChange={(v) => setInputRoomName(v)}
+                  >
+                    <SelectTrigger className="w-[220px]">
+                      <SelectValue placeholder="방을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRooms.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  방: {presetRoomName ?? "(없음)"}
+                </div>
+              )}
               <div className="text-sm text-muted-foreground">
-                방:{" "}
-                {presetRoomName ??
-                  "현재 입장할 수 없습니다. 담당 선생님에게 문의 해주세요."}{" "}
-                / 이름:{" "}
-                {presetNickname ??
-                  "이름이 없습니다. 담당 선생님에게 문의 해주세요."}
+                닉네임: {presetNickname ?? "(없음)"}
               </div>
               <Button
                 onClick={(e) =>
