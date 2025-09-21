@@ -768,8 +768,8 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                     <div>
                       {/* Teacher editor on the right, only for students and when teacher is connected */}
                       {isWelcomeHidden && !isTeacher && teacherUid && (
-                        <div className="bg-white rounded-lg shadow p-0 border">
-                          <div className="p-3">
+                        <div className="bg-white rounded-lg shadow p-0 border relative">
+                          <div className="p-3 relative">
                             <div className="mb-2 text-sm font-medium text-gray-700">
                               선생님: {teacherName}
                             </div>
@@ -784,6 +784,30 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                                 indentOnInput: true,
                               }}
                             />
+                            {/* Teacher video overlay */}
+                            <div className="absolute top-2 right-2 z-10">
+                              <video
+                                ref={(el) => {
+                                  if (el) {
+                                    remoteVideoRefs.current?.set(
+                                      teacherUid,
+                                      el
+                                    );
+                                    const stream =
+                                      remoteStreams.current?.get(teacherUid);
+                                    if (stream && el.srcObject !== stream) {
+                                      el.srcObject = stream;
+                                    }
+                                  } else {
+                                    remoteVideoRefs.current?.delete(teacherUid);
+                                  }
+                                }}
+                                autoPlay
+                                playsInline
+                                className="w-32 h-24 object-cover rounded-md border border-gray-300 bg-gray-800 shadow"
+                                style={{ transform: "scaleX(-1)" }}
+                              />
+                            </div>
                           </div>
                         </div>
                       )}
@@ -857,9 +881,9 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                     .map(([uid, u]) => (
                       <div
                         key={uid}
-                        className="bg-white rounded-lg shadow p-0 border flex flex-col"
+                        className="bg-white rounded-lg shadow p-0 border flex flex-col relative"
                       >
-                        <div className="p-3 space-y-3">
+                        <div className="p-3 space-y-3 relative">
                           <div className="mb-2 text-sm font-medium text-gray-700">
                             {u.nickname}
                             {isHydrated ? ` — ${uid.slice(-6)}` : null}
@@ -875,6 +899,27 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
                               indentOnInput: true,
                             }}
                           />
+                          {/* Remote user video overlay */}
+                          <div className="absolute top-2 right-2 z-10">
+                            <video
+                              ref={(el) => {
+                                if (el) {
+                                  remoteVideoRefs.current?.set(uid, el);
+                                  const stream =
+                                    remoteStreams.current?.get(uid);
+                                  if (stream && el.srcObject !== stream) {
+                                    el.srcObject = stream;
+                                  }
+                                } else {
+                                  remoteVideoRefs.current?.delete(uid);
+                                }
+                              }}
+                              autoPlay
+                              playsInline
+                              className="w-28 h-20 object-cover rounded-md border border-gray-300 bg-gray-800 shadow"
+                              style={{ transform: "scaleX(-1)" }}
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
