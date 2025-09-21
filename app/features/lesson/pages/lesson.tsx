@@ -123,52 +123,6 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
   const myStreamRef = useRef<MediaStream | null>(null);
   const roomNameRef = useRef<string>("");
 
-  // Local-only file explorer state for my editor
-  const initialTree: FileNode[] = useMemo(
-    () => [
-      {
-        id: "root",
-        userId: 1,
-        name: "project",
-        type: "folder",
-        parentId: null,
-        path: "/project",
-        children: [
-          {
-            id: "main_py",
-            userId: 1,
-            name: "main.py",
-            type: "file",
-            parentId: "root",
-            path: "/project/main.py",
-          },
-          {
-            id: "utils",
-            userId: 1,
-            name: "utils",
-            type: "folder",
-            parentId: "root",
-            path: "/project/utils",
-            children: [
-              {
-                id: "helpers_py",
-                userId: 1,
-                name: "helpers.py",
-                type: "file",
-                parentId: "utils",
-                path: "/project/utils/helpers.py",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-    []
-  );
-  const [activeFilePath, setActiveFilePath] = useState<string | null>(
-    "/project/main.py"
-  );
-
   // 다중 연결 관리 훅
   const {
     peerConnections,
@@ -319,46 +273,6 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
     }
   }, [saveFetcher.state, saveFetcher.data]);
 
-  // Load selected file into my editor content only for myUserId (via FilesProvider)
-  // useEffect(() => {
-  //   if (!activeFilePath) return;
-  //   const content = getContent(activeFilePath);
-  //   setEditorContents((previous) => {
-  //     const copy = new Map(previous);
-  //     copy.set(myUserId, content);
-  //     return copy;
-  //   });
-  //   const unsub = subscribe(activeFilePath, (next: string) => {
-  //     setEditorContents((previous) => {
-  //       const copy = new Map(previous);
-  //       copy.set(myUserId, next);
-  //       return copy;
-  //     });
-  //   });
-  //   return unsub;
-  // }, [activeFilePath, myUserId, getContent, subscribe]);
-
-  // const handleSaveMyFile = useCallback(() => {
-  //   if (!activeFilePath) return;
-  //   const content = editorContents.get(myUserId) ?? "";
-  //   setContent(activeFilePath, content);
-  //   setSaveInfo(`${activeFilePath} 저장 완료`);
-  //   setTimeout(() => setSaveInfo(""), 1500);
-  // }, [activeFilePath, editorContents, myUserId, setContent]);
-
-  // const myEditorHeader = (
-  //   <div className="flex items-center gap-2 p-2 bg-white border-b">
-  //     <SidebarTrigger />
-  //     <div className="text-sm text-muted-foreground truncate">
-  //       {activeFilePath ?? "새 파일"}
-  //     </div>
-  //     <div className="flex-1" />
-  //     <Button size="sm" variant="secondary" onClick={handleSaveMyFile}>
-  //       <SaveIcon className="w-4 h-4 mr-1" /> 저장
-  //     </Button>
-  //   </div>
-  // );
-
   return (
     <SidebarProvider>
       <Sidebar>
@@ -400,6 +314,37 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
       </Sidebar>
       <SidebarInset>
         <div className="p-6 max-w-none w-full">
+          {!isWelcomeHidden && (
+            <div className="space-y-4 mb-10">
+              <h2 className="text-2xl font-bold">다중 사용자 영상 채팅</h2>
+              <p>방번호와 닉네임을 입력해주세요.</p>
+              <form onSubmit={handleWelcomeSubmit} className="space-y-3">
+                <Input
+                  type="text"
+                  placeholder="방번호를 입력하세요"
+                  value={inputRoomName}
+                  onChange={(e) => setInputRoomName(e.target.value)}
+                  className="flex-1"
+                  required
+                />
+                <Input
+                  type="text"
+                  placeholder="닉네임을 입력하세요"
+                  value={inputNickname}
+                  onChange={(e) => setInputNickname(e.target.value)}
+                  required
+                />
+                <Button
+                  type="submit"
+                  disabled={!socket}
+                  className="w-full cursor-pointer"
+                >
+                  입장
+                </Button>
+              </form>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 border-b p-3">
             <SidebarTrigger />
             <div className="truncate text-sm text-muted-foreground">
@@ -432,95 +377,69 @@ export default function Lesson({ loaderData }: Route.ComponentProps) {
           </div>
 
           <div className="p-4">
-            <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                {contentFetcher.state === "loading" ? (
-                  "Loading..."
-                ) : (
+            {selectedName.endsWith(".py") && (
+              <div className="w-full whitespace-pre-wrap text-sm text-muted-foreground grid grid-cols-1  gap-4">
+                <div>
+                  {contentFetcher.state === "loading" ? (
+                    "Loading..."
+                  ) : (
+                    <div>
+                      <h4 className="mb-1 text-xs font-semibold text-gray-700">
+                        {saveInfo ? (
+                          <div className="mb-2 text-xs text-green-600">
+                            {saveInfo}
+                          </div>
+                        ) : (
+                          "editor"
+                        )}
+                      </h4>
+                      <CodeMirror
+                        value={contentFetcher.data?.content ?? ""}
+                        height="420px"
+                        onChange={(value) => setContent(value)}
+                        basicSetup={{
+                          lineNumbers: true,
+                          highlightActiveLine: true,
+                          highlightActiveLineGutter: true,
+                          indentOnInput: true,
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-3">
+                    <h4 className="mb-1 text-xs font-semibold text-gray-700">
+                      콘솔
+                    </h4>
+                    <pre className="p-2 bg-gray-100 rounded text-xs overflow-auto max-h-48 md:max-h-80">
+                      {output}
+                    </pre>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {!loaded && !skError && (
+                    <span className="text-xs text-gray-500">
+                      Skulpt 로딩 중…
+                    </span>
+                  )}
+                  {skError && (
+                    <span className="text-xs text-red-600">
+                      Skulpt 로딩 실패
+                    </span>
+                  )}
                   <div>
                     <h4 className="mb-1 text-xs font-semibold text-gray-700">
-                      {saveInfo ? (
-                        <div className="mb-2 text-xs text-green-600">
-                          {saveInfo}
-                        </div>
-                      ) : (
-                        "editor"
-                      )}
+                      Turtle
                     </h4>
-                    <CodeMirror
-                      value={contentFetcher.data?.content ?? ""}
-                      height="420px"
-                      onChange={(value) => setContent(value)}
-                      basicSetup={{
-                        lineNumbers: true,
-                        highlightActiveLine: true,
-                        highlightActiveLineGutter: true,
-                        indentOnInput: true,
-                      }}
-                      theme="light"
-                      style={{ border: "1px solid #ddd" }}
-                      extensions={[python()]}
+                    <div
+                      ref={canvasRef}
+                      className="w-full h-[220px] md:h-[500px] border border-gray-200 rounded"
                     />
                   </div>
-                )}
-                <div className="mt-3">
-                  <h4 className="mb-1 text-xs font-semibold text-gray-700">
-                    콘솔
-                  </h4>
-                  <pre className="p-2 bg-gray-100 rounded text-xs overflow-auto max-h-48 md:max-h-80">
-                    {output}
-                  </pre>
                 </div>
               </div>
-              <div className="flex flex-col gap-3">
-                {!loaded && !skError && (
-                  <span className="text-xs text-gray-500">Skulpt 로딩 중…</span>
-                )}
-                {skError && (
-                  <span className="text-xs text-red-600">Skulpt 로딩 실패</span>
-                )}
-                <div>
-                  <h4 className="mb-1 text-xs font-semibold text-gray-700">
-                    Turtle
-                  </h4>
-                  <div
-                    ref={canvasRef}
-                    className="w-full h-[220px] md:h-[500px] border border-gray-200 rounded"
-                  />
-                </div>
-              </div>
-            </div>
+            )}
           </div>
-          {!isWelcomeHidden && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">다중 사용자 영상 채팅</h2>
-              <p>방번호와 닉네임을 입력해주세요.</p>
-              <form onSubmit={handleWelcomeSubmit} className="space-y-3">
-                <Input
-                  type="text"
-                  placeholder="방번호를 입력하세요"
-                  value={inputRoomName}
-                  onChange={(e) => setInputRoomName(e.target.value)}
-                  className="flex-1"
-                  required
-                />
-                <Input
-                  type="text"
-                  placeholder="닉네임을 입력하세요"
-                  value={inputNickname}
-                  onChange={(e) => setInputNickname(e.target.value)}
-                  required
-                />
-                <Button
-                  type="submit"
-                  disabled={!socket}
-                  className="w-full cursor-pointer"
-                >
-                  입장
-                </Button>
-              </form>
-            </div>
-          )}
           {isWelcomeHidden && (
             <div className="h-screen flex flex-col relative">
               {/* 상단 헤더 */}
