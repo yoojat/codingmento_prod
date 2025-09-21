@@ -49,5 +49,4 @@ LEFT JOIN public.profiles AS parent ON pc.parent_id = parent.profile_id
 LEFT JOIN public.teacher_students AS ts ON ts.student_id = profiles.profile_id
 LEFT JOIN public.profiles AS teacher ON ts.teacher_id = teacher.profile_id
 LEFT JOIN public.payments ON payments.profile_id = profiles.profile_id
-WHERE profiles.is_teacher IS FALSE
 GROUP BY profiles.profile_id;

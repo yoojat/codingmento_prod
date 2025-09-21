@@ -20,12 +20,11 @@ import {
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
 import {
-  BarChart3Icon,
   BellIcon,
+  CreditCardIcon,
   LogOutIcon,
   Menu,
   MessageCircleIcon,
-  SettingsIcon,
   UserIcon,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -321,14 +320,14 @@ export default function Navigation({
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild className="cursor-pointer">
                   <Link to="/my/profile">
-                    <UserIcon className="size-4 mr-2" />
-                    프로필
+                    <CreditCardIcon className="size-4 mr-2" />
+                    수업 결제 내역
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer">
                   <Link to="/my/settings">
-                    <SettingsIcon className="size-4 mr-2" />
-                    설정
+                    <UserIcon className="size-4 mr-2" />
+                    프로필 설정
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>

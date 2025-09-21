@@ -35,7 +35,6 @@ export const meta: Route.MetaFunction = () => {
 export const loader = async ({ request, params }: Route.LoaderArgs) => {
   const { client } = makeSSRClient(request);
   const user = await getUserByUsername(client, params.username);
-
   if (!user) {
     throw new Error("User not found");
   }

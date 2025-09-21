@@ -46,7 +46,7 @@ export default function ProfileLayout() {
             <Button variant="outline" asChild>
               <Link to="/my/settings">프로필 변경</Link>
             </Button>
-            <Dialog>
+            {/* <Dialog>
               <DialogTrigger asChild>
                 <Button variant="secondary">메시지 보내기</Button>
               </DialogTrigger>
@@ -68,7 +68,7 @@ export default function ProfileLayout() {
                   </Form>
                 </DialogDescription>
               </DialogContent>
-            </Dialog>
+            </Dialog> */}
           </div>
           <div className="flex gap-2 items-center">
             {profile?.username && (

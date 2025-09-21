@@ -180,12 +180,13 @@ export default function HomePage() {
             </p>
             <p className="mb-2">
               ✔️ <b>주요 강의 경력</b>
-              <br />• 2025 인재개발원 – 블록코딩으로 로봇 만들기
+              <br />• 2025 인제대학교 - 의생명공학관 파이썬 및 데이터 분석 특강
+              <br />• 2025 인재개발원 - 블록코딩으로 로봇 만들기
               <br />• 주택금융공사 – 신입사원 파이썬 교육
               <br />• 부산자동차고등학교 – AI Certificate for Everyone 교육 및
               컴퓨터 활용 수업
-              <br />• 부산대학교 환경공학과 – 온신갈스 거동 예측을 위한 파이썬
-              대회 및 코딩 교육
+              <br />• 부산대학교 사회환경시스템공학부 환경공학과 – 온신갈스 거동
+              예측을 위한 파이썬 대회 및 코딩 교육
               <br />• 삼성중공업 거제조선소 – 파이썬 특강
               <br />• 연일초등학교, 전국 초중고 100여 곳 – AI 및 진로 연계 코딩
               교육 다수
@@ -199,7 +200,7 @@ export default function HomePage() {
             </p>
             <p className="mb-2">
               📚 <b>학력</b>
-              <br />• 부산대학교 환경공학과 졸업
+              <br />• 부산대학교 사회환경시스템공학부 환경공학과 졸업
               <br />• 부산대학교 데이터사이언스 대학원 석사 과정 재학 중
             </p>
             <p className="mb-2">
@@ -335,7 +336,7 @@ export default function HomePage() {
                 🎓 학력
               </h4>
               <ul className="space-y-2 text-sm">
-                <li>• 부산대학교 환경공학과 졸업</li>
+                <li>• 부산대학교 사회환경시스템공학부 환경공학과 졸업</li>
                 <li>• 부산대학교 데이터사이언스 대학원 석사 과정 재학 중</li>
               </ul>
             </div>
@@ -426,7 +427,9 @@ export default function HomePage() {
                   <h4 className="font-semibold text-blue-600">
                     2023.05, 2023.12, 2024.11
                   </h4>
-                  <p className="font-medium">부산대학교 환경공학과</p>
+                  <p className="font-medium">
+                    부산대학교 사회환경시스템공학부 환경공학과
+                  </p>
                   <p className="text-gray-600">
                     온신갈스 거동예측 코딩교육 및 대회(파이썬)
                   </p>
