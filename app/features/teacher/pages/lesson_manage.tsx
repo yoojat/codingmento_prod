@@ -199,6 +199,9 @@ export default function LessonManage({ loaderData }: Route.ComponentProps) {
   const addFetcher = useFetcher<{ ok: boolean; error?: string }>();
   const removeFetcher = useFetcher<{ ok: boolean; error?: string }>();
 
+  const [pendingAddId, setPendingAddId] = useState<string | null>(null);
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+
   useEffect(() => {
     if (selectedGroupId) {
       membersFetcher.submit(
@@ -236,36 +239,50 @@ export default function LessonManage({ loaderData }: Route.ComponentProps) {
 
   function onAddStudent(studentId: string) {
     if (!selectedGroupId) return;
+    setPendingAddId(studentId);
     addFetcher.submit(
       { intent: "add-student", groupId: selectedGroupId, studentId },
       { method: "post" }
     );
-    // refresh members after add
-    setTimeout(() => {
-      membersFetcher.submit(
-        { intent: "group-members", groupId: selectedGroupId },
-        { method: "post" }
-      );
-    }, 10);
   }
 
   function onRemoveStudent(studentId: string) {
     if (!selectedGroupId) return;
+    setPendingRemoveId(studentId);
     removeFetcher.submit(
       { intent: "remove-student", groupId: selectedGroupId, studentId },
       { method: "post" }
     );
-    // refresh members after remove
-    setTimeout(() => {
-      membersFetcher.submit(
-        { intent: "group-members", groupId: selectedGroupId },
-        { method: "post" }
-      );
-    }, 10);
   }
 
   const isCreating = createFetcher.state !== "idle";
   const isSearching = searchFetcher.state !== "idle";
+  const isAdding = addFetcher.state !== "idle";
+  const isRemoving = removeFetcher.state !== "idle";
+
+  useEffect(() => {
+    if (addFetcher.state === "idle") {
+      setPendingAddId(null);
+      if (selectedGroupId) {
+        membersFetcher.submit(
+          { intent: "group-members", groupId: selectedGroupId },
+          { method: "post" }
+        );
+      }
+    }
+  }, [addFetcher.state, selectedGroupId]);
+
+  useEffect(() => {
+    if (removeFetcher.state === "idle") {
+      setPendingRemoveId(null);
+      if (selectedGroupId) {
+        membersFetcher.submit(
+          { intent: "group-members", groupId: selectedGroupId },
+          { method: "post" }
+        );
+      }
+    }
+  }, [removeFetcher.state, selectedGroupId]);
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -355,9 +372,11 @@ export default function LessonManage({ loaderData }: Route.ComponentProps) {
                   <Button
                     size="sm"
                     onClick={() => onAddStudent(s.profile_id)}
-                    disabled={!selectedGroupId}
+                    disabled={!selectedGroupId || isAdding}
                   >
-                    추가
+                    {isAdding && pendingAddId === s.profile_id
+                      ? "추가 중…"
+                      : "추가"}
                   </Button>
                 </div>
               ))
@@ -392,8 +411,11 @@ export default function LessonManage({ loaderData }: Route.ComponentProps) {
                     size="sm"
                     variant="destructive"
                     onClick={() => onRemoveStudent(m.profile_id)}
+                    disabled={isRemoving}
                   >
-                    제거
+                    {isRemoving && pendingRemoveId === m.profile_id
+                      ? "제거 중…"
+                      : "제거"}
                   </Button>
                 </div>
               ))}
