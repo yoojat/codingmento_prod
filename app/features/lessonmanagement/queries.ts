@@ -98,3 +98,17 @@ export const getLessonLogsPagesByDateRange = async (
   }
   return Math.ceil(count / PAGE_SIZE);
 };
+
+export const getLessonCountByProfileId = async (
+  client: SupabaseClient,
+  { profileId }: { profileId: string }
+) => {
+  const { data, error } = await client
+    .from("lesson_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", profileId);
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+};

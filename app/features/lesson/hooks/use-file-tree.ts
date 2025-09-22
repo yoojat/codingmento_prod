@@ -320,7 +320,6 @@ export function useFileTree(
     (id: string, e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      // @ts-expect-error radix nativeEvent
       e.nativeEvent?.stopImmediatePropagation?.();
       setCtxTargetId(id);
       setCtxTarget("folder");
@@ -339,7 +338,6 @@ export function useFileTree(
     (id: string, e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      // @ts-expect-error radix nativeEvent
       e.nativeEvent?.stopImmediatePropagation?.();
       setCtxTargetId(id);
       setCtxTarget("file");

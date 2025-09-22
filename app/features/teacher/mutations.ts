@@ -11,6 +11,7 @@ export const createLessonLog = async (
   const existingLessonLog = await getOldestLessonLogWithoutStartAt(client, {
     profileId: data.profile_id,
   });
+  console.log("existingLessonLog", existingLessonLog);
   if (existingLessonLog) {
     const { data: updated, error } = await client
       .from("lesson_logs")
@@ -30,12 +31,35 @@ export const createLessonLog = async (
     if (error) throw new Error(error.message);
     return updated;
   } else {
+    console.log("inserting");
     const { data: inserted, error } = await client
       .from("lesson_logs")
       .insert(data)
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+    console.log("inserted", inserted);
     return inserted;
   }
+};
+
+interface BulkLessonLogData extends Omit<LessonLogInsert, "profile_id"> {}
+
+export const createLessonLogs = async (
+  client: SupabaseClient<Database>,
+  profileIds: string[],
+  data: BulkLessonLogData
+) => {
+  console.log(profileIds, data);
+  const results = await Promise.all(
+    profileIds.map(async (profileId) => {
+      const res = await createLessonLog(client, {
+        ...data,
+        profile_id: profileId,
+      } as LessonLogInsert);
+      return { profileId, id: res?.id };
+    })
+  );
+  console.log(results);
+  return results;
 };

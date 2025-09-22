@@ -19,6 +19,7 @@ import { makeSSRClient } from "~/supa-client";
 import { getLoggedInUserId } from "~/features/users/queries";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "~/lib/utils";
+import { getLessonCountByProfileId } from "../queries";
 
 interface PaymentReceipt {
   id: string;
@@ -43,7 +44,11 @@ export const meta: Route.MetaFunction = () => {
 export async function loader({ request }: Route.LoaderArgs) {
   const { client } = makeSSRClient(request);
   const userId = await getLoggedInUserId(client);
+  const lessonsCount = await getLessonCountByProfileId(client, {
+    profileId: userId,
+  });
 
+  console.log(lessonsCount);
   // Mock: 수업 진행/결제 상태
   const pricePerLesson = 30000; // KRW
   const lessonsDoneThisCycle = 7;

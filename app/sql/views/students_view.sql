@@ -3,6 +3,7 @@ DROP VIEW IF EXISTS students_view;
 CREATE OR REPLACE VIEW students_view AS
 SELECT
     profiles.profile_id,
+    profiles.name,
     profiles.username,
     profiles.phone,
     profiles.birth,

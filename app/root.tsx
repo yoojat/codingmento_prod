@@ -51,7 +51,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const loader = async ({ request }: Route.LoaderArgs) => {
+export const loader = async ({ request }: { request: Request }) => {
   const { client } = makeSSRClient(request);
   const {
     data: { user },
@@ -63,7 +63,11 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   return { user: null, profile: null };
 };
 
-export default function App({ loaderData }: Route.ComponentProps) {
+export default function App({
+  loaderData,
+}: {
+  loaderData: { user: any; profile: any };
+}) {
   const { pathname } = useLocation();
   const navigation = useNavigation();
   const isLoading = navigation.state === "loading";

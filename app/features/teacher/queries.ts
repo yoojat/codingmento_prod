@@ -82,7 +82,9 @@ export const getStudentsBySearch = async (
   const { data, error } = await client
     .from("students_view")
     .select("*")
-    .or(`username.ilike.%${search}%,phone.ilike.%${search}%`);
+    .or(
+      `username.ilike.%${search}%,phone.ilike.%${search}%,name.ilike.%${search}%`
+    );
   if (error) {
     throw new Error(error.message);
   }

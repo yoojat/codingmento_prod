@@ -16,7 +16,7 @@ import {
   getUserById,
 } from "~/features/users/queries";
 import { z } from "zod";
-import { createLessonLog } from "../mutations";
+import { createLessonLogs } from "../mutations";
 import { getStudentsBySearch } from "../queries";
 import {
   Avatar,
@@ -79,7 +79,6 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 };
 
 const formSchema = z.object({
-  profile_id: z.string(),
   start_at: z.string(),
   end_at: z.string(),
   subject: z.string(),
@@ -123,6 +122,16 @@ export const action = async ({ request }: Route.ActionArgs) => {
     if (!success) {
       return { fieldErrors: error.flatten((i) => i.message).fieldErrors };
     }
+
+    const profileIds = formData
+      .getAll("profile_ids")
+      .filter(Boolean) as string[];
+    if (profileIds.length === 0) {
+      return {
+        fieldErrors: { profile_ids: ["학생을 한 명 이상 선택해주세요."] },
+      };
+    }
+
     const {
       start_at,
       end_at,
@@ -132,10 +141,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
       student_reaction,
       photo,
       next_week_plan,
-      profile_id,
     } = data;
 
-    const { id } = await createLessonLog(client, {
+    const results = await createLessonLogs(client, profileIds, {
       start_at,
       end_at,
       subject,
@@ -144,9 +152,10 @@ export const action = async ({ request }: Route.ActionArgs) => {
       student_reaction,
       img_url: photo,
       next_week_plan,
-      profile_id,
     });
-    return { id };
+
+    console.log("results", results);
+    return { ids: results.map((r) => r.id) };
   }
 };
 
@@ -155,6 +164,18 @@ export default function SubmitLessonLog({
   actionData,
 }: Route.ComponentProps) {
   const navigation = useNavigation();
+  function getFieldErrors(key: string): string[] | undefined {
+    if (
+      actionData &&
+      typeof actionData === "object" &&
+      "fieldErrors" in actionData &&
+      (actionData as any).fieldErrors
+    ) {
+      const fe = (actionData as any).fieldErrors as Record<string, string[]>;
+      return fe[key];
+    }
+    return undefined;
+  }
   const [photo, setPhoto] = useState<string | null>(null);
   const [day, setDay] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState<Date | null>(null);
@@ -167,8 +188,9 @@ export default function SubmitLessonLog({
     addTwoHoursToHHmm(defaultStart)
   );
   const [students, setStudents] = useState<StudentSearchItem[]>([]);
-  const [selectedStudent, setSelectedStudent] =
-    useState<StudentSearchItem | null>(null);
+  const [selectedStudents, setSelectedStudents] = useState<StudentSearchItem[]>(
+    []
+  );
   const isSearching =
     (navigation.state === "submitting" || navigation.state === "loading") &&
     navigation.formData?.get("_action") === "search";
@@ -251,7 +273,13 @@ export default function SubmitLessonLog({
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => setSelectedStudent(s)}
+                      onClick={() =>
+                        setSelectedStudents((prev) =>
+                          prev.some((p) => p.profile_id === s.profile_id)
+                            ? prev
+                            : [...prev, s]
+                        )
+                      }
                     >
                       선택
                     </Button>
@@ -267,27 +295,45 @@ export default function SubmitLessonLog({
         className="max-w-screen-2xl flex flex-col items-center gap-10 mx-auto mt-20"
         method="post"
       >
-        {selectedStudent && (
+        {selectedStudents.length > 0 && (
           <Card className="w-full">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">선택된 학생</CardTitle>
+              <CardTitle className="text-base">
+                선택된 학생 ({selectedStudents.length})
+              </CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center gap-4">
-              <Avatar className="size-12">
-                <AvatarImage src={selectedStudent.avatar ?? undefined} />
-                <AvatarFallback>
-                  {selectedStudent.name?.[0] ?? "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">
-                  {selectedStudent.name}
-                </div>
-                <div className="text-sm text-muted-foreground truncate">
-                  @{selectedStudent.username}{" "}
-                  {selectedStudent.phone ? `· ${selectedStudent.phone}` : ""}
-                </div>
-              </div>
+            <CardContent>
+              <ul className="divide-y rounded-md border">
+                {selectedStudents.map((s) => (
+                  <li
+                    key={s.profile_id}
+                    className="flex items-center gap-3 p-3"
+                  >
+                    <Avatar className="size-10">
+                      <AvatarImage src={s.avatar ?? undefined} />
+                      <AvatarFallback>{s.name?.[0] ?? "U"}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{s.name}</div>
+                      <div className="text-sm text-muted-foreground truncate">
+                        @{s.username} {s.phone ? `· ${s.phone}` : ""}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      onClick={() =>
+                        setSelectedStudents((prev) =>
+                          prev.filter((p) => p.profile_id !== s.profile_id)
+                        )
+                      }
+                    >
+                      제거
+                    </Button>
+                  </li>
+                ))}
+              </ul>
             </CardContent>
           </Card>
         )}
@@ -340,14 +386,14 @@ export default function SubmitLessonLog({
             value={end_at ? end_at.toISOString() : ""}
             readOnly
           />
-          {actionData && "fieldErrors" in actionData && (
+          {getFieldErrors("start_at") && (
             <p className="text-red-500 text-sm">
-              {actionData.fieldErrors?.start_at?.join(", ")}
+              {getFieldErrors("start_at")?.join(", ")}
             </p>
           )}
-          {actionData && "fieldErrors" in actionData && (
+          {getFieldErrors("end_at") && (
             <p className="text-red-500 text-sm">
-              {actionData.fieldErrors?.end_at?.join(", ")}
+              {getFieldErrors("end_at")?.join(", ")}
             </p>
           )}
           {!isValidRange ? (
@@ -361,9 +407,9 @@ export default function SubmitLessonLog({
           rows={1}
           placeholder="학습 주제를 입력해주세요."
         />
-        {actionData && "fieldErrors" in actionData && (
+        {getFieldErrors("subject") && (
           <p className="text-red-500 text-sm">
-            {actionData.fieldErrors?.subject?.join(", ")}
+            {getFieldErrors("subject")?.join(", ")}
           </p>
         )}
         <Textarea
@@ -371,9 +417,9 @@ export default function SubmitLessonLog({
           rows={10}
           placeholder="학습 내용을 입력해주세요."
         />
-        {actionData && "fieldErrors" in actionData && (
+        {getFieldErrors("content") && (
           <p className="text-red-500 text-sm">
-            {actionData.fieldErrors?.content?.join(", ")}
+            {getFieldErrors("content")?.join(", ")}
           </p>
         )}
         <Textarea
@@ -381,9 +427,9 @@ export default function SubmitLessonLog({
           rows={10}
           placeholder="수업분위기를 입력해주세요."
         />
-        {actionData && "fieldErrors" in actionData && (
+        {getFieldErrors("class_vibe") && (
           <p className="text-red-500 text-sm">
-            {actionData.fieldErrors?.class_vibe?.join(", ")}
+            {getFieldErrors("class_vibe")?.join(", ")}
           </p>
         )}
         <Textarea
@@ -391,9 +437,9 @@ export default function SubmitLessonLog({
           rows={10}
           placeholder="학생반응을 입력해주세요."
         />
-        {actionData && "fieldErrors" in actionData && (
+        {getFieldErrors("student_reaction") && (
           <p className="text-red-500 text-sm">
-            {actionData.fieldErrors?.student_reaction?.join(", ")}
+            {getFieldErrors("student_reaction")?.join(", ")}
           </p>
         )}
         <aside className="w-full p-6 border rounded-lg shadow-md">
@@ -416,9 +462,9 @@ export default function SubmitLessonLog({
               required
               name="photo"
             />
-            {actionData && "fieldErrors" in actionData && (
+            {getFieldErrors("photo") && (
               <p className="text-red-500 text-sm">
-                {actionData.fieldErrors?.photo?.join(", ")}
+                {getFieldErrors("photo")?.join(", ")}
               </p>
             )}
             <div className="flex flex-col text-xs">
@@ -438,17 +484,20 @@ export default function SubmitLessonLog({
           rows={10}
           placeholder="다음주 예고를 입력해주세요."
         />
-        {actionData && "fieldErrors" in actionData && (
+        {getFieldErrors("next_week_plan") && (
           <p className="text-red-500 text-sm">
-            {actionData.fieldErrors?.next_week_plan?.join(", ")}
+            {getFieldErrors("next_week_plan")?.join(", ")}
           </p>
         )}
-        <input
-          type="hidden"
-          name="profile_id"
-          value={selectedStudent?.profile_id ?? ""}
-          readOnly
-        />
+        {selectedStudents.map((s) => (
+          <input
+            key={s.profile_id}
+            type="hidden"
+            name="profile_ids"
+            value={s.profile_id}
+            readOnly
+          />
+        ))}
         <Button
           type="submit"
           name="_action"
