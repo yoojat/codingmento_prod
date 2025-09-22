@@ -30,6 +30,7 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DateTime } from "luxon";
 import { PAGE_SIZE } from "./constants";
+import { eq } from "drizzle-orm";
 const paramsSchema = z.object({
   year: z.coerce.number(),
   month: z.coerce.number(),
@@ -47,7 +48,8 @@ img_url,
 next_week_plan,
 created_at,
 updated_at,
-profiles:profiles!lesson_logs_profile_id_profiles_profile_id_fk!inner( username )`;
+profiles:profiles!lesson_logs_profile_id_profiles_profile_id_fk!inner( username ),
+`;
 
 export const getLessonLogsByDateRange = async (
   client: SupabaseClient,
@@ -99,14 +101,59 @@ export const getLessonLogsPagesByDateRange = async (
   return Math.ceil(count / PAGE_SIZE);
 };
 
-export const getLessonCountByProfileId = async (
+export const getLessonLogsCountByProfileId = async (
+  client: SupabaseClient,
+  { profileId }: { profileId: string }
+) => {
+  const { count, error } = await client
+    .from("lesson_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", profileId);
+  if (error) {
+    throw new Error(error.message);
+  }
+  return count;
+};
+
+export const getLessonsCountCompletedByProfileId = async (
+  client: SupabaseClient,
+  { profileId }: { profileId: string }
+) => {
+  const { count, error } = await client
+    .from("lesson_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", profileId)
+    .not("subject", "is", null);
+  if (error) {
+    throw new Error(error.message);
+  }
+  return count;
+};
+
+export const getLessonLogsCountPaidByProfileId = async (
+  client: SupabaseClient,
+  { profileId }: { profileId: string }
+) => {
+  const { count, error } = await client
+    .from("lesson_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", profileId)
+    .not("payment_id", "is", null);
+  if (error) {
+    throw new Error(error.message);
+  }
+  return count;
+};
+
+export const getLessonLogsWithPaymentAndContent = async (
   client: SupabaseClient,
   { profileId }: { profileId: string }
 ) => {
   const { data, error } = await client
-    .from("lesson_logs")
-    .select("id", { count: "exact", head: true })
-    .eq("profile_id", profileId);
+    .from("students_view")
+    .select("*")
+    .eq("profile_id", profileId)
+    .maybeSingle();
   if (error) {
     throw new Error(error.message);
   }

@@ -19,7 +19,21 @@ import { makeSSRClient } from "~/supa-client";
 import { getLoggedInUserId } from "~/features/users/queries";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "~/lib/utils";
-import { getLessonCountByProfileId } from "../queries";
+import {
+  getLessonLogsCountPaidByProfileId,
+  getLessonLogsWithPaymentAndContent,
+  getLessonsCountCompletedByProfileId,
+} from "../queries";
+
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/common/components/ui/table";
 
 interface PaymentReceipt {
   id: string;
@@ -44,60 +58,75 @@ export const meta: Route.MetaFunction = () => {
 export async function loader({ request }: Route.LoaderArgs) {
   const { client } = makeSSRClient(request);
   const userId = await getLoggedInUserId(client);
-  const lessonsCount = await getLessonCountByProfileId(client, {
+  // 이번 수업 횟수
+  const lessonsCompletedCount = await getLessonsCountCompletedByProfileId(
+    client,
+    {
+      profileId: userId,
+    }
+  );
+  // 납부한 수업 횟수 (결제 완료)
+  const lessonsAlreadyPaid = await getLessonLogsCountPaidByProfileId(client, {
     profileId: userId,
   });
 
-  console.log(lessonsCount);
+  // 필요 결제 수업 횟수(이번 수업 횟수 - 납부한 수업 횟수 + 선납 수업 횟수)
+  // 선납 수업 횟수는 선납 정책에 따라 계산
+  // 선납 정책은 다음 4회 분 선납(4단위)
+  // ex. 이번 수업 횟수가 4회이고 납부한 수업 횟수가 4회인 경우, 필요 결제 수업 횟수는 4회v
+  // ex. 이번 수업 횟수가 7회이고 납부한 수업 횟수가 8회인 경우, 필요 결제 수업 횟수는 0회v
+  // ex. 이번 수업 횟수가 8회이고 납부한 수업 횟수가 8회인 경우, 필요 결제 수업 횟수는 4회v
+  // ex. 이번 수업 횟수가 4회이고 납부한 수업 횟수가 8회인 경우, 필요 결제 수업 횟수는 0회
+  // ex. 이번 수업 횟수가 10회이고 납부한 수업 횟수가 8회인 경우, 필요 결제 수업 횟수는 4회
+  // ex. 이번 수업 횟수가 20회이고 납부한 수업 횟수가 0회인 경우, 필요 결제 수업 횟수는 24회
+  // ex. 이번 수업 횟수가 21회이고 납부한 수업 횟수가 0회인 경우, 필요 결제 수업 횟수는 24회
+  // ex. 이번 수업 횟수가 22회이고 납부한 수업 횟수가 0회인 경우, 필요 결제 수업 횟수는 24회
+  // ex. 이번 수업 횟수가 23회이고 납부한 수업 횟수가 0회인 경우, 필요 결제 수업 횟수는 24회
+  // ex. 이번 수업 횟수가 24회이고 납부한 수업 횟수가 0회인 경우, 필요 결제 수업 횟수는 25회
+
+  // 이번 수업횟수가 4로 나누어 떨어진다면
+  // 필요 결제횟수는 이 수업횟수 + 4 - 납부한 수업 횟수
+  // 아니라면
+  // 필요 결제횟수는 이번 수업횟수를 4로 나눈 몫 * 4 + 4 - 납부한 수업 횟수
+
+  let needToPayLessonsCount = 0;
+
+  if (lessonsCompletedCount && lessonsCompletedCount % 4 === 0) {
+    needToPayLessonsCount =
+      lessonsCompletedCount + 4 - (lessonsAlreadyPaid ?? 0);
+  } else {
+    needToPayLessonsCount =
+      Math.floor((lessonsCompletedCount ?? 0) / 4) * 4 +
+      4 -
+      (lessonsAlreadyPaid ?? 0);
+  }
+
   // Mock: 수업 진행/결제 상태
-  const pricePerLesson = 30000; // KRW
-  const lessonsDoneThisCycle = 7;
-  const lessonsAlreadyPaid = 4;
-  const dueLessons = Math.max(0, lessonsDoneThisCycle - lessonsAlreadyPaid);
-  const dueAmount = dueLessons * pricePerLesson;
+
+  // 미납 수업 횟수
+  const notPaidLessons = Math.max(
+    0,
+    (lessonsCompletedCount ?? 0) - (lessonsAlreadyPaid ?? 0)
+  );
 
   // 선납 정책: 다음 4회 분 선납
-  const prepayBlockSize = 4;
-  const nextBlockStart =
-    Math.floor(lessonsAlreadyPaid / prepayBlockSize) * prepayBlockSize + 1;
-  const nextBlockEnd = nextBlockStart + prepayBlockSize - 1;
-  const futurePrepayLessons = prepayBlockSize;
-  const futurePrepayAmount = futurePrepayLessons * pricePerLesson;
+  // 납부한 수업 횟수가 이번 수업횟수보다 작거나 같고,
+  // 납부한 수업 횟수에서 이번 수업횟수를 빼고
+  // 그 값이 0보다 크고 4로 나눈 나머지가 0이면 선납 필요
 
-  const receipts: PaymentReceipt[] = [
-    {
-      id: "rcp_202507",
-      date: "2025-07-31T12:10:00.000Z",
-      periodLabel: "2025-07-01 ~ 2025-07-31",
-      amount: 120000,
-      lessonsCovered: 4,
-      method: "카드",
-      status: "paid",
-    },
-    {
-      id: "rcp_202506",
-      date: "2025-06-30T11:00:00.000Z",
-      periodLabel: "2025-06-01 ~ 2025-06-30",
-      amount: 150000,
-      lessonsCovered: 5,
-      method: "계좌이체",
-      status: "paid",
-    },
-  ];
+  const { lesson_logs } = await getLessonLogsWithPaymentAndContent(client, {
+    profileId: userId,
+  });
+
+  console.log(lesson_logs);
 
   return {
     userId,
-    pricePerLesson,
-    lessonsDoneThisCycle,
     lessonsAlreadyPaid,
-    dueLessons,
-    dueAmount,
-    prepayBlockSize,
-    nextBlockStart,
-    nextBlockEnd,
-    futurePrepayLessons,
-    futurePrepayAmount,
-    receipts,
+    notPaidLessons,
+    lessonsCompletedCount,
+    needToPayLessonsCount,
+    lesson_logs,
   };
 }
 
@@ -134,19 +163,14 @@ export default function LessonPayment({
 }: Route.ComponentProps) {
   const {
     userId,
-    pricePerLesson,
-    lessonsDoneThisCycle,
+    notPaidLessons,
     lessonsAlreadyPaid,
-    dueLessons,
-    dueAmount,
-    nextBlockStart,
-    nextBlockEnd,
-    futurePrepayLessons,
-    futurePrepayAmount,
-    receipts,
+    lessonsCompletedCount,
+    needToPayLessonsCount,
+    lesson_logs,
   } = loaderData;
 
-  const isPaymentNeeded = dueLessons > 0;
+  const isPaymentNeeded = needToPayLessonsCount > 0;
 
   const widgets = useRef<TossPaymentsWidgets | null>(null);
 
@@ -159,7 +183,7 @@ export default function LessonPayment({
         customerKey: userId,
       });
       await widgets.current.setAmount({
-        value: dueAmount,
+        value: 1000,
         currency: "KRW",
       });
       await widgets.current.renderPaymentMethods({
@@ -170,16 +194,16 @@ export default function LessonPayment({
       });
     };
     initToss();
-  }, [userId, dueAmount]);
+  }, [userId]);
 
   useEffect(() => {
     if (widgets.current) {
       widgets.current.setAmount({
-        value: dueAmount,
+        value: 1000,
         currency: "KRW",
       });
     }
-  }, [dueAmount]);
+  }, []);
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
@@ -193,68 +217,57 @@ export default function LessonPayment({
           </Badge>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
             <div className="p-3 rounded-md bg-muted">
-              <div className="text-muted-foreground">이번 사이클 수업</div>
+              <div className="text-muted-foreground">수업 완료</div>
               <div className="text-lg font-semibold">
-                {lessonsDoneThisCycle}회
+                {lessonsCompletedCount}회
               </div>
             </div>
-            <div className="p-3 rounded-md bg-muted">
-              <div className="text-muted-foreground">이미 납부</div>
-              <div className="text-lg font-semibold">
-                {lessonsAlreadyPaid}회
-              </div>
-            </div>
+
             <div className="p-3 rounded-md bg-muted">
               <div className="text-muted-foreground">미납 수업</div>
-              <div className="text-lg font-semibold">{dueLessons}회</div>
+              <div className={cn(notPaidLessons > 0 && "text-red-600")}>
+                <div className="text-lg font-semibold">{notPaidLessons}회</div>
+              </div>
             </div>
             <div className="p-3 rounded-md bg-muted">
-              <div className="text-muted-foreground">수업료(회당)</div>
-              <div className="text-lg font-semibold">
-                {formatKRW(pricePerLesson)}
+              <div className="text-muted-foreground">결제된 수업</div>
+              <div
+                className={cn(
+                  lessonsAlreadyPaid &&
+                    lessonsAlreadyPaid > 0 &&
+                    "text-green-600"
+                )}
+              >
+                <div className="text-lg font-semibold">
+                  {lessonsAlreadyPaid}회
+                </div>
               </div>
             </div>
           </div>
           <Separator />
           <div className="flex items-center justify-between text-sm">
-            <div className="text-muted-foreground">미납 금액</div>
-            <div className="text-xl font-bold">{formatKRW(dueAmount)}</div>
+            <div className="text-muted-foreground">결제 필요 수업 횟수</div>
+            <div className="text-xl font-bold">{needToPayLessonsCount}회</div>
           </div>
-          <div className="rounded-md bg-muted p-3 text-sm">
-            <div className="flex items-center justify-between">
-              <div className="text-muted-foreground">
-                다음 선납 (#{nextBlockStart} ~ #{nextBlockEnd})
-              </div>
-              <div className="text-lg font-semibold">
-                {formatKRW(futurePrepayAmount)}
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              다음 {futurePrepayLessons}회 차 선납 금액 안내
-            </div>
+          {/* 결제 정책 안내 */}
+          <div className="rounded-md bg-muted/70 p-4 text-sm space-y-2">
+            <div className="font-medium">선납 정책 안내</div>
+            <p className="text-muted-foreground">
+              선결제 후 수업 진행(4회분씩)
+              <br />
+            </p>
           </div>
         </CardContent>
-        <CardFooter className="justify-between gap-3 flex-col sm:flex-row">
+        <CardFooter className="justify-center gap-3 flex-col sm:flex-row">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
-              onClick={() => setIsPaymentModalOpen(true)}
               size="lg"
               className="w-full sm:w-auto"
               disabled={!isPaymentNeeded}
             >
-              {isPaymentNeeded ? "미납 결제하기" : "미납 없음"}
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              variant="secondary"
-              size="lg"
-              className="w-full sm:w-auto"
-              onClick={() => setIsPaymentModalOpen(true)}
-            >
-              다음 {futurePrepayLessons}회 선납 결제
+              결제하기
             </Button>
           </div>
         </CardFooter>
@@ -263,9 +276,7 @@ export default function LessonPayment({
       <div className={cn("hidden", isPaymentModalOpen && "block")}>
         <div id="toss-payment-methods" />
         <div id="toss-payment-agreement" />
-        <Button className="w-full">
-          {dueAmount.toLocaleString("ko-KR")}원 결제하기
-        </Button>
+        <Button className="w-full">1000원 결제하기</Button>
       </div>
 
       {actionData?.ok ? (
@@ -280,43 +291,41 @@ export default function LessonPayment({
         </Card>
       ) : null}
 
-      {/* <Card>
-        <CardHeader>
-          <CardTitle>영수증 내역</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {receipts.map((r) => (
-            <div key={r.id} className="rounded-lg border p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="font-medium">{r.periodLabel}</div>
-                  <div className="text-xs text-muted-foreground">
-                    결제일: {new Date(r.date).toLocaleString("ko-KR")}
-                  </div>
+      <Table>
+        <TableCaption>수업 내역</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">수업 회차</TableHead>
+            <TableHead>수업 일자</TableHead>
+            <TableHead>수업 주제</TableHead>
+            <TableHead className="text-right">결제 일자</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {lesson_logs.map((lessonLog: any, index: number) => (
+            <TableRow key={index}>
+              <TableCell className="font-medium">{index + 1}회</TableCell>
+              <TableCell>
+                {lessonLog.startAt
+                  ? new Date(lessonLog.startAt).toLocaleDateString()
+                  : "수업예정"}
+              </TableCell>
+              <TableCell>{lessonLog.subject || "수업예정"}</TableCell>
+              <TableCell className="text-right">
+                <div
+                  className={cn(lessonLog.payment_created_at || "text-red-600")}
+                >
+                  {lessonLog.payment_created_at
+                    ? new Date(
+                        lessonLog.payment_created_at
+                      ).toLocaleDateString()
+                    : "미결제"}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={r.status === "paid" ? "secondary" : "destructive"}
-                  >
-                    {r.status === "paid" ? "결제완료" : "환불"}
-                  </Badge>
-                  <div className="text-right">
-                    <div className="text-sm">수업 {r.lessonsCovered}회</div>
-                    <div className="text-lg font-semibold">
-                      {formatKRW(r.amount)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <Separator className="my-3" />
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <div>결제수단</div>
-                <div>{r.method}</div>
-              </div>
-            </div>
+              </TableCell>
+            </TableRow>
           ))}
-        </CardContent>
-      </Card> */}
+        </TableBody>
+      </Table>
     </div>
   );
 }
